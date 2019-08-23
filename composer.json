@@ -1,0 +1,27 @@
+{
+    "name": "inspiresoftware/mg-sso",
+    "description": "SSO of MundoGamer project",
+    "type": "project",
+    "require": {
+        "jasny/sso": "^0.3.0"
+    },
+    "authors": [
+        {
+            "name": "Bruno Ferreira",
+            "email": "brunogonncalves@icloud.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": {
+            "InspireSoftware\\MGSSO\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "InspireSoftware\\MGSSO\\MGSSOServiceProvider"
+            ]
+        }
+    }
+}
