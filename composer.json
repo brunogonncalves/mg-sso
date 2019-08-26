@@ -3,7 +3,8 @@
     "description": "SSO of MundoGamer project",
     "type": "project",
     "require": {
-        "jasny/sso": "^0.3.0"
+        "jasny/sso": "^0.3.0",
+        "inspiresoftware/mg-sso": "dev-master"
     },
     "authors": [
         {

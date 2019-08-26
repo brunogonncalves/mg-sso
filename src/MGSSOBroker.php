@@ -12,7 +12,6 @@ class MGSSOBroker extends Broker
     public function __construct()
     {
         parent::__construct(env('SSO_SERVER_URL'),env('SSO_CLIENT_ID'),env("SSO_CLIENT_SECRET"));
-        $this->attach(true);
     }
 
     /**
