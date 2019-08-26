@@ -27,7 +27,6 @@ class MGSSOBroker extends Broker
         $returnUrl = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
         $params = ['return_url' => $returnUrl];
         $url = $this->getAttachUrl($params);
-        echo '<a href="' . $url . '">Redirecionando para ' . $url . '</a>';
     }
 
     protected function request($method, $command, $data = null)

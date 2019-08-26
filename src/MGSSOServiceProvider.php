@@ -24,10 +24,15 @@ class MGSSOServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/routes.php');
         $this->loadMigrationsFrom(__DIR__.'/Migrations');
 
+        $this->app->booted(function () {
+            include __DIR__.'/routes.php';
+        });
+
         if(isset($_SERVER['HTTP_HOST'])){
             $broker = $this->app->make('InspireSoftware\MGSSO\MGSSOBroker');
-            $broker->attach(true);
-            $broker->loginCurrentUser();
+            $broker->attach();
+            if(isset($broker->userinfo)) $broker->loginCurrentUser();
+            
         }
     }
 }
