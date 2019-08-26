@@ -25,8 +25,8 @@ class MGSSOServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/Migrations');
 
         if(isset($_SERVER['HTTP_HOST'])){
-            $this->attach(true);
             $broker = $this->app->make('InspireSoftware\MGSSO\MGSSOBroker');
+            $broker->attach(true);
             $broker->loginCurrentUser();
         }
     }
