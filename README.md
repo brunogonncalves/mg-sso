@@ -3,7 +3,6 @@ Private SSO adapted to MundoGamer project
 
 ### installation
 - `composer require inspiresoftware/mg-sso`
-- `php artisan migrate --package=vendor/inspiresoftware/mg-sso/src/Migrations/add_network_id_field.php`
 - Open config/app.php and add `InspireSoftware\MGSSO\MGSSOServiceProvider::class` to provider array.
   
 #### .env
