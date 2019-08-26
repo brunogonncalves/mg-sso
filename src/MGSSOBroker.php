@@ -22,7 +22,7 @@ class MGSSOBroker extends Broker
      */
     public function attach($returnUrl = null)
     {
-        if ($this->isAttached()) return;
+        if ($this->isAttached() || !isset($_SERVER['HTTP_HOST'])) return;
 
         $protocol = !empty($_SERVER['HTTPS']) ? 'https://' : 'http://';
         $returnUrl = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
