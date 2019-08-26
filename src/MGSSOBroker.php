@@ -28,7 +28,7 @@ class MGSSOBroker extends Broker
         $returnUrl = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
         $params = ['return_url' => $returnUrl];
         $url = $this->getAttachUrl($params);
-        echo '<a href="' . $url . '">Redirecionando para ' . $returnUrl . '</a>';
+        echo '<a href="' . $url . '">Redirecionando para ' . $url . '</a>';
     }
 
     protected function request($method, $command, $data = null)
@@ -44,6 +44,9 @@ class MGSSOBroker extends Broker
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json', 'Authorization: Bearer '. $this->getSessionID()]);
 
         if ($method === 'POST' && !empty($data)) {
+            $data['token'] = $this->token;
+            $data['broker'] = $this->broker;
+            $data['checksum'] = hash('sha256', 'session' . $this->token . $this->secret);
             $post = is_string($data) ? $data : http_build_query($data);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
         }
@@ -83,7 +86,7 @@ class MGSSOBroker extends Broker
         return true;
     }
 
-    public function loginCurrentUser($returnUrl = '/'){
+    public function loginCurrentUser($returnUrl = '/', $redirect = true){
         $SSOUser = $this->getUserInfo();
 
         if($SSOUser){
@@ -101,8 +104,8 @@ class MGSSOBroker extends Broker
                 $data['password'] = 123456;
                 $user = $userModelClass::query()->create($data);
             }
-
-            return $this->onLoginSuccess($user->id, $returnUrl);
+            
+            if($redirect) return $this->onLoginSuccess($user->id, $returnUrl);
 
         }
     }
@@ -114,10 +117,10 @@ class MGSSOBroker extends Broker
 
     }
 
-    public function onLoginSuccess($userId, $returnUrl = '/'){
+    public function onLoginSuccess($userId, $returnUrl = '/mgsso'){
 
-        Auth::loginUsingId($userId);
-        return redirect()->to($returnUrl);
+        Auth::loginUsingId($userId, true);
+        return redirect($returnUrl);
 
     }
 

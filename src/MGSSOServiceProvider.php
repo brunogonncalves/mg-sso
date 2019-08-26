@@ -1,6 +1,7 @@
 <?php namespace InspireSoftware\MGSSO;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Auth;
 
 class MGSSOServiceProvider extends ServiceProvider
 {
@@ -11,7 +12,6 @@ class MGSSOServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        // $this->app->make('InpireSoftware\MGSSO\Controllers\MGSSOController');
     }
 
     /**
@@ -23,5 +23,7 @@ class MGSSOServiceProvider extends ServiceProvider
     {
         $this->loadRoutesFrom(__DIR__.'/routes.php');
         $this->loadMigrationsFrom(__DIR__.'/Migrations');
+        $broker = $this->app->make('InspireSoftware\MGSSO\MGSSOBroker');
+        $broker->loginCurrentUser();
     }
 }
