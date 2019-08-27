@@ -1,5 +1,5 @@
 # Description
-Private SSO adapted to MundoGamer project
+Private SSO adapted to MundoGamer Network project
 
 ### installation
 - `composer require inspiresoftware/mg-sso`
