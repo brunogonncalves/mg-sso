@@ -31,5 +31,8 @@ class User extends Authenticatable
 }
 ```
 
+### Update users
+ Don't forget to run `php artisan mgsso:integration` this command will find all users and populate `network_id` column in user based on network user
+
 
 # Enjoy the magic!
