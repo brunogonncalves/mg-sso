@@ -28,7 +28,7 @@ class MGSSOController extends BaseController
             }
 
             Session::put('origin', MGSSOHelper::isMobile());
-            Session::put('nav', MGSSOHelper::getBroser());
+            Session::put('nav', MGSSOHelper::getBrowser());
             
             return $mgBroker->loginCurrentUser();
             // return $this->sendLoginResponse($request);
