@@ -131,6 +131,11 @@ class MGSSOBroker extends Broker
         }
     }
 
+    public function forceLogin($userId){
+        $this->request('POST', 'force-login', ['user_id' => $user->id]);
+        $this->loginCurrentUser(false, false);
+    }
+
     public static function createUser($data){
 
         $broker = new self();
