@@ -26,6 +26,9 @@ class MGSSOController extends BaseController
 
                 return $this->sendLockoutResponse($request);
             }
+
+            Session::put('origin', MGSSOHelper::isMobile());
+            Session::put('nav', MGSSOHelper::getBroser());
             
             return $mgBroker->loginCurrentUser();
             // return $this->sendLoginResponse($request);
