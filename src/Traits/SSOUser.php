@@ -1,6 +1,6 @@
 <?php namespace InspireSoftware\MGSSO\Traits;
 
-use InpireSoftware\MGSSO\MGSSOBroker;
+use InspireSoftware\MGSSO\MGSSOBroker;
 
 trait SSOUser {
 
