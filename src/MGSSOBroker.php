@@ -99,7 +99,7 @@ class MGSSOBroker extends Broker
                 $data['network_id'] = $data['id'];
                 unset($data['id']);
 
-                $data['password'] = 123456;
+                $data['password'] = bcrypt(123456);
                 $user = $userModelClass::query()->create($data);
             }
             

@@ -4,7 +4,7 @@
     "type": "project",
     "require": {
         "jasny/sso": "^0.3.0",
-        "inspiresoftware/mg-sso": "dev-master"
+        "guzzlehttp/guzzle": "^6.3",
     },
     "authors": [
         {

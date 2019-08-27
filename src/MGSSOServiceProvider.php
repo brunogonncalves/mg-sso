@@ -3,6 +3,8 @@
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Auth;
 
+use InspireSoftware\MGSSO\Console\MGSSOIntegrationCommand;
+
 class MGSSOServiceProvider extends ServiceProvider
 {
     /**
@@ -28,10 +30,19 @@ class MGSSOServiceProvider extends ServiceProvider
             include __DIR__.'/routes.php';
         });
 
-        if(isset($_SERVER['HTTP_HOST'])){
+        if ($this->app->runningInConsole()) {
+            
+            $this->commands([
+                MGSSOIntegrationCommand::class,
+            ]);
+
+        } else {
+
             $broker = $this->app->make('InspireSoftware\MGSSO\MGSSOBroker');
             $broker->attach();
             $broker->loginCurrentUser();
+
         }
+        
     }
 }
