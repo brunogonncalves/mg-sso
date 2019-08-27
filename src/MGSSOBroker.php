@@ -126,6 +126,8 @@ class MGSSOBroker extends Broker
             
             if($redirect) return $this->onLoginSuccess($user->id, $returnUrl);
 
+            Auth::loginUsingId($user->id, true);
+
         }
     }
 
@@ -147,7 +149,10 @@ class MGSSOBroker extends Broker
     public function onLoginSuccess($userId, $returnUrl = '/mgsso'){
         Auth::loginUsingId($userId, true);
         return redirect($returnUrl);
+    }
 
+    public function initialVerify(){
+        $this->loginCurrentUser(true, false);
     }
 
 }
