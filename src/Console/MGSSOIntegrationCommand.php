@@ -10,7 +10,7 @@ class MGSSOIntegrationCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'mgsso:integration';
+    protected $signature = 'mgsso:integration {--user=all}';
 
     /**
      * The console command description.
@@ -34,12 +34,16 @@ class MGSSOIntegrationCommand extends Command
      */
     public function handle()
     {
-        
         $userModelClass = config('auth.providers.users.model');
         $userTableName = (new $userModelClass)->getTable();
         
-        $users = $userModelClass::where('network_id', null)->get();
-        $total = $users->count();
+        if($this->option('user') === 'all'){
+            $users = $userModelClass::where('network_id', null)->get();
+            $total = $users->count();
+        } else {
+            $users = [$userModelClass::findOrFail($this->option('user'))];
+            $total = 1;
+        }
 
         if($total > 0){
 

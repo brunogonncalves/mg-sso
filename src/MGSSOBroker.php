@@ -10,7 +10,7 @@ use App\Models\User;
 class MGSSOBroker extends Broker
 {
     public function __construct()
-    {
+    {   
         parent::__construct(env('SSO_SERVER_URL'),env('SSO_CLIENT_ID'),env("SSO_CLIENT_SECRET"));
     }
 
@@ -29,11 +29,18 @@ class MGSSOBroker extends Broker
         $url = $this->getAttachUrl($params);
     }
 
-    protected function request($method, $command, $data = null)
+    protected function request($method, $command, $data = null, $isFromProvider = false)
     {   
-        if (!$this->isAttached()) {
+        if (!$isFromProvider && !$this->isAttached()) {
             throw new NotAttachedException('No token');
         }
+        
+        if(is_array($data)){
+            $data['token'] = $this->token;
+            $data['broker'] = $this->broker;
+            $data['checksum'] = hash('sha256', 'session' . $this->token . $this->secret);
+        }
+
         $url = $this->getRequestUrl($command, !$data || $method === 'POST' ? [] : $data);
 
         $ch = curl_init($url);
@@ -41,13 +48,10 @@ class MGSSOBroker extends Broker
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json', 'Authorization: Bearer '. $this->getSessionID()]);
 
-        if ($method === 'POST' && !empty($data)) {
-            $data['token'] = $this->token;
-            $data['broker'] = $this->broker;
-            $data['checksum'] = hash('sha256', 'session' . $this->token . $this->secret);
-            $post = is_string($data) ? $data : http_build_query($data);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
-        }
+        if (empty($data)) $data = [];
+        $post = is_string($data) ? $data : http_build_query($data);
+
+        if ($method === 'POST') curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
 
         $response = curl_exec($ch);
         if (curl_errno($ch) != 0) {
@@ -60,15 +64,32 @@ class MGSSOBroker extends Broker
         
 
         $data = json_decode($response, true);
+
+        /// if(!$isFromProvider) dd($response, $httpCode);
         
         if ($httpCode == 403) {
             $this->clearToken();
-            throw new NotAttachedException(isset($data['error']) && $data['error'] ?: $response, $httpCode);
+            // throw new NotAttachedException(isset($data['error']) && $data['error'] ?: $response, $httpCode);
+            return;
         }
 
         if ($httpCode >= 400) throw new Exception(isset($data['error']) && $data['error'] ?: $response, $httpCode);
 
         return $data;
+    }
+
+    /**
+     * Get user information.
+     *
+     * @return object|null
+     */
+    public function getUserInfo($isFromProvider = false)
+    {
+        if (!isset($this->userinfo)) {
+            $this->userinfo = $this->request('GET', 'userInfo', [], $isFromProvider);
+        }
+
+        return $this->userinfo;
     }
 
     public function loginUser($username, $password){
@@ -85,7 +106,7 @@ class MGSSOBroker extends Broker
     }
 
     public function loginCurrentUser($returnUrl = '/', $redirect = true){
-        $SSOUser = $this->getUserInfo();
+        $SSOUser = $this->getUserInfo($returnUrl === true);
 
         if($SSOUser){
 
@@ -115,8 +136,15 @@ class MGSSOBroker extends Broker
 
     }
 
-    public function onLoginSuccess($userId, $returnUrl = '/mgsso'){
+    public static function flush(){
 
+        $broker = new self();
+        $broker->clearToken();
+        $broker->userinfo = null;
+        $broker->request('POST', 'logout', [], true);
+    }
+
+    public function onLoginSuccess($userId, $returnUrl = '/mgsso'){
         Auth::loginUsingId($userId, true);
         return redirect($returnUrl);
 

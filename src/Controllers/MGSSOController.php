@@ -5,6 +5,8 @@ use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
 
 use InspireSoftware\MGSSO\MGSSOBroker;
 
@@ -33,5 +35,12 @@ class MGSSOController extends BaseController
         $this->incrementLoginAttempts($request);
 
         return $this->sendFailedLoginResponse($request);
+    }
+
+    public function logout(){
+        MGSSOBroker::flush();
+        Auth::logout();
+        Session::flush();
+        return redirect('/');
     }
 }
