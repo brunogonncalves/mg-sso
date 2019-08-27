@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 
 use InspireSoftware\MGSSO\MGSSOBroker;
+use InspireSoftware\MGSSO\MGSSOHelper;
 
 class MGSSOController extends BaseController
 {
