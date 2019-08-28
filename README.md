@@ -5,6 +5,7 @@ Private SSO adapted to MundoGamer Network project
 - `composer require inspiresoftware/mg-sso`
 - Open config/app.php and add `InspireSoftware\MGSSO\MGSSOServiceProvider::class` to provider array.
 - Execute `php artisan migrate`
+- Execute `php artisan vendor:publish --provider='InspireSoftware\MGSSO\MGSSOServiceProvider' --tag=config` and edit your broker credentials
   
 #### .env
 ```
