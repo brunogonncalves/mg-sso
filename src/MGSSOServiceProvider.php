@@ -14,6 +14,9 @@ class MGSSOServiceProvider extends ServiceProvider
      */
     public function register()
     {
+        $this->publishes([
+            __DIR__ . '/MGSSOConfig.php' => config_path('mgsso.php'),
+        ], 'config');
     }
 
     /**

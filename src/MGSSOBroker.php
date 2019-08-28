@@ -11,7 +11,7 @@ class MGSSOBroker extends Broker
 {
     public function __construct()
     {   
-        parent::__construct(env('SSO_SERVER_URL'),env('SSO_CLIENT_ID'),env("SSO_CLIENT_SECRET"));
+        parent::__construct(config('mgsso.credential.server'),config('mgsso.credential.client'),config('mgsso.credential.key'));
     }
 
     /**
@@ -131,8 +131,8 @@ class MGSSOBroker extends Broker
         }
     }
 
-    public function forceLogin($userId){
-        $this->request('POST', 'force-login', ['user_id' => $user->id]);
+    public function forceLogin($user){
+        $this->userinfo = $this->request('POST', 'force-login', ['user' => $user]);
         $this->loginCurrentUser(false, false);
     }
 
