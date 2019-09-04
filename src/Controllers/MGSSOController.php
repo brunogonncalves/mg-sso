@@ -10,20 +10,18 @@ use Illuminate\Support\Facades\Session;
 
 use InspireSoftware\MGSSO\MGSSOBroker;
 use InspireSoftware\MGSSO\MGSSOHelper;
+use InspireSoftware\MGSSO\Traits\SSOSendsPasswordResetEmails;
 
 class MGSSOController extends BaseController
 {
-    use AuthorizesRequests, ValidatesRequests, AuthenticatesUsers;
+    use AuthorizesRequests, ValidatesRequests, AuthenticatesUsers, SSOSendsPasswordResetEmails;
 
     public function index(Request $request){
-        return view('mgsso::login', [
-            
-        ]);
+        return view('mgsso::login');
     }
 
     public function login(Request $request, MGSSOBroker $mgBroker)
     {
-        return dd('eita');
         $this->validateLogin($request);
         $loginResult = $mgBroker->loginUser($request->get('email'),$request->get('password'));
 

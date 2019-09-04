@@ -160,4 +160,8 @@ class MGSSOBroker extends Broker
         $this->loginCurrentUser(true, false);
     }
 
+    public function resetPassword(){
+        return $this->request('POST', 'reset-password', ['email' => request('email')]);
+    }
+
 }
