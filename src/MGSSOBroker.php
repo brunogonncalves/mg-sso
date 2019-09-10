@@ -107,7 +107,7 @@ class MGSSOBroker extends Broker
     public function loginCurrentUser($returnUrl = '/', $redirect = true){
         $SSOUser = $this->getUserInfo($returnUrl === true);
 
-        if($SSOUser){
+        if($SSOUser && isset($SSOUser['id'])){
 
             $userModelClass = config('auth.providers.users.model');
             $userTableName = (new $userModelClass)->getTable();
