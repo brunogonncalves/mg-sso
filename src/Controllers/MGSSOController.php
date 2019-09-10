@@ -25,7 +25,7 @@ class MGSSOController extends BaseController
     public function authenticated(Request $request, $user)
     {
         $ssoUser = (new MGSSOBroker)->getUserInfo();
-        if ($ssoUser && !$ssoUser['verified']) {
+        if ($ssoUser && isset($ssoUser['verified']) && !$ssoUser['verified']) {
             $phrase =  Lang::get('loginReg.EmailMessagePhrase1');
             MGSSOBroker::flush();
             Auth::logout();
