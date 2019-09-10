@@ -7,6 +7,7 @@ use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Lang;
 
 use InspireSoftware\MGSSO\MGSSOBroker;
 use InspireSoftware\MGSSO\MGSSOHelper;
@@ -17,7 +18,25 @@ class MGSSOController extends BaseController
     use AuthorizesRequests, ValidatesRequests, AuthenticatesUsers, SSOSendsPasswordResetEmails;
 
     public function index(Request $request){
+        $this->authenticated($request, Auth::user());
         return view('mgsso::login');
+    }
+
+    public function authenticated(Request $request, $user)
+    {
+        $ssoUser = (new MGSSOBroker)->getUserInfo();
+        if ($ssoUser && !$ssoUser['verified']) {
+            $phrase =  Lang::get('loginReg.EmailMessagePhrase1');
+            MGSSOBroker::flush();
+            Auth::logout();
+            return back()->with('warning', $phrase);
+        }
+        
+        if($user && $user->level_id === 2){
+            return redirect('home');
+        }
+
+        return redirect()->intended($this->redirectPath());
     }
 
     public function login(Request $request, MGSSOBroker $mgBroker)

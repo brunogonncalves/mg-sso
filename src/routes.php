@@ -5,7 +5,5 @@ Route::group(['middleware' => ['web']], function () {
     Route::post('password/email', 'InspireSoftware\MGSSO\Controllers\MGSSOController@sendResetLinkEmail')->name('password.email');
     Route::get('login', 'InspireSoftware\MGSSO\Controllers\MGSSOController@index')->name('login');
     Route::any('logout', 'InspireSoftware\MGSSO\Controllers\MGSSOController@logout');
-    Route::get('mgsso/verify-user', function(){
-        return dd(Auth::user());
-    });
+    Route::get('user/verify/{token}', 'InspireSoftware\MGSSO\Controllers\MGSSOController@verifyUser');
 });

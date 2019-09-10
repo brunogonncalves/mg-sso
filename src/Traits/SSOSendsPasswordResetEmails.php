@@ -26,7 +26,7 @@ trait SSOSendsPasswordResetEmails
     {
         $this->validateEmail($request);
         
-        $broker->resetPassword();
+        $response = $broker->resetPassword();
 
         return $response == Password::RESET_LINK_SENT
             ? $this->sendResetLinkResponse($response)

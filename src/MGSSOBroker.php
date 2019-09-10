@@ -1,6 +1,7 @@
 <?php namespace InspireSoftware\MGSSO;
 
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Lang;
 use Jasny\SSO\Broker;
 use Jasny\SSO\Exception;
 use Jasny\SSO\NotAttachedException;
@@ -31,9 +32,7 @@ class MGSSOBroker extends Broker
 
     protected function request($method, $command, $data = null, $isFromProvider = false)
     {   
-        if (!$isFromProvider && !$this->isAttached()) {
-            throw new NotAttachedException('No token');
-        }
+        if (!$isFromProvider && !$this->isAttached()) return;
         
         if(is_array($data)){
             $data['token'] = $this->token;
@@ -73,7 +72,7 @@ class MGSSOBroker extends Broker
             return;
         }
 
-        if ($httpCode >= 400) throw new Exception(isset($data['error']) && $data['error'] ?: $response, $httpCode);
+        // if ($httpCode >= 400) throw new Exception(isset($data['error']) && $data['error'] ?: $response, $httpCode);
 
         return $data;
     }
@@ -124,9 +123,23 @@ class MGSSOBroker extends Broker
                 $user = $userModelClass::query()->create($data);
             }
             
-            if($redirect) return $this->onLoginSuccess($user->id, $returnUrl);
+            if($redirect) {
+                if(!$user->verified){
+                    if(!$SSOUser['verified']) {
+                        $phrase =  Lang::get('loginReg.EmailMessagePhrase1');
+                        self::flush();
+                        Auth::logout();
+                        return back()->with('warning', $phrase);
+                    }
+                }
+                if(empty($user->terms_use) || empty($user->policy)) return redirect('terms-user');
+                if(empty($user->nickname) || empty($user->date_birth)) return redirect('step');
+
+                return $this->onLoginSuccess($user->id, $returnUrl);
+            }
 
             Auth::loginUsingId($user->id, true);
+            if($SSOUser['verified'] && !$user->verified) $user->update(['verified' => 1]);
 
         }
     }
