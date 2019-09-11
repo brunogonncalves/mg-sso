@@ -20,7 +20,7 @@ class MGSSOValidateTermsMiddleware
     {
         $path = $request->path();
         $user = Auth::user();
-        $ignoreRoutes = ['login', 'logoout', 'terms-save', 'terms-user', 'step'];
+        $ignoreRoutes = ['login', 'logout', 'terms-save', 'terms-user', 'step'];
         $run = true;
 
         foreach($ignoreRoutes as $route){
