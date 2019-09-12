@@ -8,7 +8,7 @@ trait SSOUser {
         
         $networkUser = MGSSOBroker::createUser($attributes);
 
-        if($networkUser){
+        if($networkUser && isset($networkUser['id'])){
             $attributes['network_id'] = $networkUser['id'];
             if(isset($attributes['id'])) unset($attributes['id']);
             return static::query()->create($attributes);
