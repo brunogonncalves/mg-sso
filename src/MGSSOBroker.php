@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\Facades\Session;
 use Jasny\SSO\Broker;
 use Jasny\SSO\Exception;
 use Jasny\SSO\NotAttachedException;
@@ -31,14 +32,12 @@ class MGSSOBroker extends Broker
     }
 
     protected function request($method, $command, $data = null, $isFromProvider = false)
-    {   
-        if (!$isFromProvider){
+    {   if (!$isFromProvider){
             if(!$this->isAttached()) $this->attach();
         };
         
         if(is_array($data)){
             $data['token'] = $this->token;
-            $data['access_token'] = $this->token;
             $data['broker'] = $this->broker;
             $data['checksum'] = hash('sha256', 'session' . $this->token . $this->secret);
         }
@@ -66,13 +65,7 @@ class MGSSOBroker extends Broker
         
         $data = json_decode($response, true);
 
-        // if(!$isFromProvider) return dd($response, $httpCode);
-        
-        if ($httpCode == 403) {
-            $this->clearToken();
-            // throw new NotAttachedException(isset($data['error']) && $data['error'] ?: $response, $httpCode);
-            return;
-        }
+        // if(!$isFromProvider) return dd($response, $data, $httpCode);
 
         if (!$isFromProvider && $httpCode >= 400 && isset($data['error'])) throw new Exception($data['error'] ?: $response, $httpCode);
 
@@ -86,17 +79,20 @@ class MGSSOBroker extends Broker
      */
     public function getUserInfo($isFromProvider = false)
     {
-        if (!isset($this->userinfo)) {
-            $this->userinfo = $this->request('GET', 'userInfo', [], $isFromProvider);
+        if (!Session::has('user')) {
+            Session::put('user', $this->request('GET', 'userInfo', [], $isFromProvider));
         }
 
-        return $this->userinfo;
+        return Session::get('user');
     }
 
     public function loginUser($username, $password){
         try {
             $user = $this->login($username, $password);
             if(!$user) return false;
+            else {
+                Session::put('user', $user);
+            }
         }
         catch(NotAttachedException $e){
             return false;
@@ -150,7 +146,9 @@ class MGSSOBroker extends Broker
     }
 
     public function forceLogin($user){
-        $this->userinfo = $this->request('POST', 'force-login', ['user' => $user]);
+        $ssoUser = $this->request('POST', 'force-login', ['user' => $user]);
+        $this->userinfo = $ssoUser;
+        Session::put('user', $ssoUser);
         $this->loginCurrentUser(false, false);
     }
 
