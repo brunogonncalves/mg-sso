@@ -45,7 +45,6 @@ class MGSSOServiceProvider extends ServiceProvider
             
             $broker = $this->app->make('InspireSoftware\MGSSO\MGSSOBroker');
             $broker->attach();
-            $broker->initialVerify();
 
         }
         

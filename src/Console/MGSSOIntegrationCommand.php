@@ -74,7 +74,7 @@ class MGSSOIntegrationCommand extends Command
         $http = new Client;
         $response = $http->request(
             'POST', 
-            env('SSO_SERVER_URL'),
+            config('mgsso.credential.server'),
             [
                 'form_params' => [
                     'command' => 'integrate-user',

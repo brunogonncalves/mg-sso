@@ -18,22 +18,24 @@ class MGSSOController extends BaseController
     use AuthorizesRequests, ValidatesRequests, AuthenticatesUsers, SSOSendsPasswordResetEmails;
 
     public function index(Request $request){
-        $this->authenticated($request, Auth::user());
         return view('mgsso::login');
     }
 
     public function authenticated(Request $request, $user)
     {
-        $ssoUser = (new MGSSOBroker)->getUserInfo();
-        if ($ssoUser && isset($ssoUser['verified']) && !$ssoUser['verified']) {
-            $phrase =  Lang::get('loginReg.EmailMessagePhrase1');
-            MGSSOBroker::flush();
-            Auth::logout();
-            return back()->with('warning', $phrase);
-        }
-        
-        if($user && $user->level_id === 2){
-            return redirect('home');
+        if($user){
+            $broker = new MGSSOBroker;
+            $ssoUser = $broker->getUserInfo();
+            if ($ssoUser && isset($ssoUser['verified']) && !$ssoUser['verified']) {
+                $phrase =  Lang::get('loginReg.EmailMessagePhrase1');
+                $broker->logout();
+                return back()->with('warning', $phrase);
+            }
+            
+            if($user && $user->level_id === 2){
+                return redirect('/');
+            }
+
         }
 
         return redirect()->intended($this->redirectPath());
@@ -42,7 +44,7 @@ class MGSSOController extends BaseController
     public function login(Request $request, MGSSOBroker $mgBroker)
     {
         $this->validateLogin($request);
-        $loginResult = $mgBroker->loginUser($request->get('email'),$request->get('password'));
+        $loginResult = $mgBroker->login($request->get('email'),$request->get('password'));
 
         if($loginResult){
             
@@ -52,11 +54,7 @@ class MGSSOController extends BaseController
                 return $this->sendLockoutResponse($request);
             }
 
-            Session::put('origin', MGSSOHelper::isMobile());
-            Session::put('nav', MGSSOHelper::getBrowser());
-            
-            return $mgBroker->loginCurrentUser();
-            // return $this->sendLoginResponse($request);
+            return $mgBroker->sendLoginResponse();
             
         }
         
@@ -65,10 +63,8 @@ class MGSSOController extends BaseController
         return $this->sendFailedLoginResponse($request);
     }
 
-    public function logout(){
-        MGSSOBroker::flush();
-        Auth::logout();
-        Session::flush();
+    public function logout(MGSSOBroker $mgBroker){
+        $mgBroker->logout();
         return redirect('/');
     }
 }

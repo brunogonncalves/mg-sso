@@ -6,7 +6,8 @@ trait SSOUser {
 
     public static function create(array $attributes = []){
         
-        $networkUser = MGSSOBroker::createUser($attributes);
+        $broker = new MGSSOBroker;
+        $networkUser = $broker->createUser($attributes);
 
         if($networkUser && isset($networkUser['id'])){
             $attributes['network_id'] = $networkUser['id'];

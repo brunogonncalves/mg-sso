@@ -3,7 +3,6 @@
 return [
     'credential' => [
         'server' => 'http://localhost:8001/sso',
-        'client' => 'your-client',
-        'key' => 'your-key',
+        'system_id' => 'MundoGamerProduct ID',
     ]
 ];
