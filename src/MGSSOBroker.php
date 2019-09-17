@@ -298,17 +298,19 @@ class MGSSOBroker
     public function sendLoginResponse(){
         $user = Auth::user();
 
-        if(!$user->verified){
-            $SSOUser = $this->getUserInfo();
-            if(!$SSOUser || !isset($SSOUser['verified']) || !$SSOUser['verified']) {
-                $phrase =  Lang::get('loginReg.EmailMessagePhrase1');
-                $this->logout();
-                return back()->with('warning', $phrase);
+        if($user){
+            if(!$user->verified){
+                $SSOUser = $this->getUserInfo();
+                if(!$SSOUser || !isset($SSOUser['verified']) || !$SSOUser['verified']) {
+                    $phrase =  Lang::get('loginReg.EmailMessagePhrase1');
+                    $this->logout();
+                    return back()->with('warning', $phrase);
+                }
             }
+    
+            if(empty($user->terms_use) || empty($user->policy)) return redirect('terms-user');
+            if(empty($user->nickname) || empty($user->date_birth)) return redirect('step');
         }
-
-        if(empty($user->terms_use) || empty($user->policy)) return redirect('terms-user');
-        if(empty($user->nickname) || empty($user->date_birth)) return redirect('step');
 
         return redirect('/');
     }
