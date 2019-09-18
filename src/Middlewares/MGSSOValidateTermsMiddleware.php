@@ -19,25 +19,29 @@ class MGSSOValidateTermsMiddleware
     public function handle($request, Closure $next, $guard = null)
     {
         $path = $request->path();
+        $flashSessionStatus = $request->get('with');
         $user = Auth::user();
-        $ignoreRoutes = ['login', 'logout', 'terms-save', 'terms-user', 'step'];
+        $ignoreRoutes = config('mgsso.ignoreMiddlewareFor');
         $run = true;
+
+        if($flashSessionStatus) session()->flash($flashSessionStatus, $request->get('message'));
+
+        if($user && !$user->verified){
+            $broker = new MGSSOBroker;
+            $mgUser = $broker->getUserInfo();
+            if(!$mgUser['verified']) {
+                $phrase =  Lang::get('loginReg.EmailMessagePhrase1');
+                MGSSOBroker::flush();
+                Auth::logout();
+                return back()->with('warning', $phrase);
+            }
+        }
 
         foreach($ignoreRoutes as $route){
             if($route === $path) $run = false;
         }
 
         if($user && $run){
-            if(!$user->verified){
-                $broker = new MGSSOBroker;
-                $mgUser = $broker->getUserInfo(true);
-                if(!$mgUser['verified']) {
-                    $phrase =  Lang::get('loginReg.EmailMessagePhrase1');
-                    MGSSOBroker::flush();
-                    Auth::logout();
-                    return back()->with('warning', $phrase);
-                }
-            }
             if(empty($user->terms_use) || empty($user->policy)) return redirect('terms-user');
             if(empty($user->nickname) || empty($user->date_birth)) return redirect('step');
         }
