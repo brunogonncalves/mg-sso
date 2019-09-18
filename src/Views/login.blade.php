@@ -28,6 +28,11 @@
                     {{ session('warning') }}
                 </div>
             @endif
+            @if (session('success'))
+                <div class="alert alert-success">
+                    {{ session('success') }}
+                </div>
+            @endif
             <div class="container">
                 <div class="offer-left"><span class="white">{{__('loginReg.JoinNow')}}</span></div>
                 <div class="form">
