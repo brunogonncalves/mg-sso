@@ -302,6 +302,10 @@ class MGSSOBroker
             if(!$user->verified){
                 $SSOUser = $this->getUserInfo();
                 if(!$SSOUser || !isset($SSOUser['verified']) || !$SSOUser['verified']) {
+                    
+                    // send email for verify
+                    $this->request('POST', 'send-email-verify', ['userId' => $SSOUser['id']]);
+                    
                     $phrase =  Lang::get('loginReg.EmailMessagePhrase1');
                     $this->logout();
                     return back()->with('warning', $phrase);
