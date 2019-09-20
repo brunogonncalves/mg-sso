@@ -6,5 +6,5 @@ return [
         'client' => 'community',
         'key' => '8iwzik1bwd',
     ],
-    'ignoreMiddlewareFor' => ['login', 'logout', 'terms-save', 'terms-user', 'step', 'save-step'],
+    'ignoreMiddlewareFor' => ['login', 'logout', 'terms-save', 'terms-user', 'step', 'save-step', 'check-nickname'],
 ];

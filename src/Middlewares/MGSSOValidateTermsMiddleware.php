@@ -19,6 +19,10 @@ class MGSSOValidateTermsMiddleware
     public function handle($request, Closure $next, $guard = null)
     {
         $path = $request->path();
+        $slashPos = stripos($path, '/');
+
+        if($slashPos !== false) $path = substr($path, 0, $slashPos);
+
         $flashSessionStatus = $request->get('with');
         $user = Auth::user();
         $ignoreRoutes = config('mgsso.ignoreMiddlewareFor');
