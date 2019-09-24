@@ -67,4 +67,25 @@ class MGSSOController extends BaseController
         $mgBroker->logout();
         return redirect('/');
     }
+
+    public function sendToken(Request $request, MGSSOBroker $mgBroker){
+        $email = request('email');
+        $userModelClass = config('auth.providers.users.model');
+        $user = $userModelClass::where('email', $email)->first();
+
+        if($user){
+            try {
+                $user->verified = 0;
+                $mgBroker->sendToken($user->email);
+                $user->save();
+                return redirect()->back()->with('status', 'Email successfully sent');
+            } catch (\Exception $ex){
+                return redirect()->back()->with('status', 'Ops! error send email');
+            }
+
+        } else{
+            return redirect()->back()->with('status', 'Is email NOT already in our database');
+        }
+    }
+    
 }

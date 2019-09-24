@@ -353,6 +353,13 @@ class MGSSOBroker
         return $user;
     }
 
+    public function sendToken($email = null){
+
+        if(!$email) $email = request('email');
+        return $this->request('POST', 'send-token', ['email' => $email]);
+
+    }
+
     /**
      * Magic method to do arbitrary request
      *

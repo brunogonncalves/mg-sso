@@ -6,4 +6,5 @@ Route::group(['middleware' => ['web']], function () {
     Route::get('login', 'InspireSoftware\MGSSO\Controllers\MGSSOController@index')->middleware('guest')->name('login');
     Route::any('logout', 'InspireSoftware\MGSSO\Controllers\MGSSOController@logout')->name('logout');
     Route::get('user/verify/{token}', 'InspireSoftware\MGSSO\Controllers\MGSSOController@verifyUser');
+    Route::name('send.token')->post('send-token','InspireSoftware\MGSSO\Controllers\MGSSOController@sendToken');
 });
