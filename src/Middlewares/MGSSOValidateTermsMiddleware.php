@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Lang;
 
 use InspireSoftware\MGSSO\MGSSOBroker;
 
+use mundogamer\Models\User;
+
 class MGSSOValidateTermsMiddleware
 {
     /**
@@ -19,6 +21,8 @@ class MGSSOValidateTermsMiddleware
     public function handle($request, Closure $next, $guard = null)
     {
         $path = $request->path();
+        $log = request('logUser', null);
+        $userNetworkId = request('userNetworkId', null);
         $slashPos = stripos($path, '/');
 
         if($slashPos !== false) $path = substr($path, 0, $slashPos);
@@ -28,8 +32,18 @@ class MGSSOValidateTermsMiddleware
         $ignoreRoutes = config('mgsso.ignoreMiddlewareFor');
         $run = true;
 
+        // log user action from network
+        if($log && $userNetworkId){
+            $userModelClass = config('auth.providers.users.model');
+            $userTableName = (new $userModelClass)->getTable();
+            $userForLog = $userModelClass::where('network_id', $userNetworkId)->first();
+            if($userForLog) $userForLog->logUser($log, $userForLog->id);
+        }
+
+        // verify flash session from network
         if($flashSessionStatus) session()->flash($flashSessionStatus, $request->get('message'));
 
+        // validate user verified
         if($user && !$user->verified){
             $broker = new MGSSOBroker;
             $mgUser = $broker->getUserInfo();
