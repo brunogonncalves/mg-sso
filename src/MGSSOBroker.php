@@ -373,6 +373,19 @@ class MGSSOBroker
         return $result;
     }
 
+    public function checkEmail($email, $networkId){
+        return $this->request('GET', 'check-email', ['email' => $email, 'id' => $networkId]);
+    }
+
+    public function setUserStatus($status){
+        $user = auth()->user();
+        return $this->request('POST', 'set-user-status', [
+            'email' => $user->email, 
+            'id' => $user->network_id, 
+            'status' => $status,
+        ]);
+    }
+
     /**
      * Magic method to do arbitrary request
      *

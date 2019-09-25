@@ -103,4 +103,10 @@ class MGSSOController extends BaseController
 
     }
 
+    public function checkEmail($email, MGSSOBroker $mgBroker){
+
+        return $mgBroker->checkEmail($email, auth()->user()->network_id);
+
+    }
+
 }
