@@ -363,6 +363,16 @@ class MGSSOBroker
 
     }
 
+    public function changePassword($oldPass, $newPass, $email){
+        $result = $this->request('POST', 'change-password', [
+            'oldPassword' => $oldPass,
+            'newPassword' => $newPass,
+            'email' => $email,
+        ]);
+
+        return $result;
+    }
+
     /**
      * Magic method to do arbitrary request
      *

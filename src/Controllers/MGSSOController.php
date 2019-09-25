@@ -87,5 +87,20 @@ class MGSSOController extends BaseController
             return redirect()->back()->with('status', 'Is email NOT already in our database');
         }
     }
-    
+
+    public function changePassword(Request $request, MGSSOBroker $mgBroker){
+        $this->validate($request, [
+            'old' => 'required',
+            'new_password' => 'required|min:6',
+        ]);
+
+        $user = auth()->user();
+        $response = $mgBroker->changePassword($request->old, $request->new_password, $user->email);
+
+        if(isset($response['success']) && $response['success']) $user->logUser(6);
+
+        return $response;
+
+    }
+
 }
