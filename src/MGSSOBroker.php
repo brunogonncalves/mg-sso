@@ -148,6 +148,9 @@ class MGSSOBroker
      */
     public function attach($returnUrl = null)
     {
+        Session::put('origin', MGSSOHelper::isMobile());
+        Session::put('nav', MGSSOHelper::getBrowser());
+        
         if ($this->isAttached() || !isset($_SERVER['HTTP_HOST'])) return;
 
         $protocol = !empty($_SERVER['HTTPS']) ? 'https://' : 'http://';
