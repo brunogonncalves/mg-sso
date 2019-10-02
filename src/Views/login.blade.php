@@ -40,8 +40,8 @@
                     <div class="form-area-login-register">
                         <div   class="@php echo($errors->count() > 0) ? 'd-none' : 'hideBtn' @endphp">
                             <a class="btn-login btn-default-login mb-20 btnOpenMenu" href="#">{{ __('loginReg.EmailPass') }}</a>
-                            <a class="btn-login btn-default-login mb-20 btn-fb" href="{{url('login/facebook')}}">Facebook</a>
-                            <a class="btn-login btn-default-login mb-20 btn-google" href="{{url('login/google')}}">Google</a>
+                            <a class="btn-login btn-default-login-disabled mb-20 btn-fb" href="{{url('login/facebook')}}">Facebook</a>
+                            <a class="btn-login btn-default-login-disabled mb-20 btn-google" href="{{url('login/google')}}">Google</a>
                             <a class="btn-login btn-default-login-disabled mb-20 btn-twitch" href="#">Twitch</a>
                             <a class="btn-login btn-default-login-disabled mb-20 btn-twitter" href="#">Twitter</a>
                         </div>
@@ -90,8 +90,8 @@
                                     </a>
                                 </div>
                                 <div class="btn-group-login">
-                                    <a  href="{{url('login/facebook')}}" class="btn btn-secondary btn-sm btn-block">Facebook</a>
-                                    <a  href="{{url('login/google')}}" class="btn btn-secondary btn-sm btn-block" style="">Google</a>
+                                    <a  href="{{url('login/facebook')}}" disabled class="btn btn-secondary btn-sm btn-block">Facebook</a>
+                                    <a  href="{{url('login/google')}}" disabled class="btn btn-secondary btn-sm btn-block" style="">Google</a>
                                     <button type="button" disabled class="btn btn-secondary btn-sm btn-block" style="">Twitch</button>
                                     <button type="button" disabled class="btn btn-secondary btn-sm btn-block" style="">Twitter</button>
                                 </div>
