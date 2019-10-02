@@ -40,8 +40,8 @@
                     <div class="form-area-login-register">
                         <div   class="@php echo($errors->count() > 0) ? 'd-none' : 'hideBtn' @endphp">
                             <a class="btn-login btn-default-login mb-20 btnOpenMenu" href="#">{{ __('loginReg.EmailPass') }}</a>
-                            <a class="btn-login btn-default-login-disabled mb-20 btn-fb" href="{{url('login/facebook')}}">Facebook</a>
-                            <a class="btn-login btn-default-login-disabled mb-20 btn-google" href="{{url('login/google')}}">Google</a>
+                            <a class="btn-login btn-default-login-disabled mb-20 btn-fb" href="#">Facebook</a>
+                            <a class="btn-login btn-default-login-disabled mb-20 btn-google" href="#">Google</a>
                             <a class="btn-login btn-default-login-disabled mb-20 btn-twitch" href="#">Twitch</a>
                             <a class="btn-login btn-default-login-disabled mb-20 btn-twitter" href="#">Twitter</a>
                         </div>
