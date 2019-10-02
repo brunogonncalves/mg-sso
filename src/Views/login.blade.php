@@ -90,8 +90,10 @@
                                     </a>
                                 </div>
                                 <div class="btn-group-login">
-                                    <a  href="{{url('login/facebook')}}" disabled class="btn btn-secondary btn-sm btn-block">Facebook</a>
-                                    <a  href="{{url('login/google')}}" disabled class="btn btn-secondary btn-sm btn-block" style="">Google</a>
+                                    <!-- <a  href="{{url('login/facebook')}}" disabled class="btn btn-secondary btn-sm btn-block">Facebook</a>
+                                    <a  href="{{url('login/google')}}" disabled class="btn btn-secondary btn-sm btn-block" style="">Google</a> -->
+                                    <button type="button" disabled class="btn btn-secondary btn-sm btn-block" style="">Facebook</button>
+                                    <button type="button" disabled class="btn btn-secondary btn-sm btn-block" style="">Google</button>
                                     <button type="button" disabled class="btn btn-secondary btn-sm btn-block" style="">Twitch</button>
                                     <button type="button" disabled class="btn btn-secondary btn-sm btn-block" style="">Twitter</button>
                                 </div>
