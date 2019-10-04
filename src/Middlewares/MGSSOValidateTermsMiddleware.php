@@ -41,10 +41,7 @@ class MGSSOValidateTermsMiddleware
         }
 
         // verify flash session from network
-        return dd($request->get('with'), $request->get('message'));
-        if($flashSessionStatus) {
-            session()->flash($flashSessionStatus, $request->get('message'));
-        }
+        if($flashSessionStatus) session()->flash($flashSessionStatus, $request->get('message'));
 
         // validate user verified
         if($user && !$user->verified){
