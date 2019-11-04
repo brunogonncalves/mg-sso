@@ -4,7 +4,7 @@
     "type": "project",
     "require": {
         "jasny/sso": "^0.3.0",
-        "guzzlehttp/guzzle": "^6.3"
+        "guzzlehttp/guzzle": "^6.3@dev"
     },
     "authors": [
         {
@@ -24,5 +24,8 @@
                 "InspireSoftware\\MGSSO\\MGSSOServiceProvider"
             ]
         }
+    },
+    "config": {
+        "preferred-install": "dist"
     }
 }

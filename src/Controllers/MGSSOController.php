@@ -18,19 +18,20 @@ class MGSSOController extends BaseController
     use AuthorizesRequests, ValidatesRequests, AuthenticatesUsers, SSOSendsPasswordResetEmails;
 
     public function index(Request $request){
+        new MGSSOBroker;
         return view('mgsso::login');
     }
 
     public function authenticated(Request $request, $user)
     {
         if($user){
-            $broker = new MGSSOBroker;
+            /*$broker = new MGSSOBroker;
             $ssoUser = $broker->getUserInfo();
             if ($ssoUser && isset($ssoUser['verified']) && !$ssoUser['verified']) {
                 $phrase =  Lang::get('loginReg.EmailMessagePhrase1');
                 $broker->logout();
                 return back()->with('warning', $phrase);
-            }
+            }*/
             
             if($user && $user->level_id === 2){
                 return redirect('/');
@@ -54,7 +55,7 @@ class MGSSOController extends BaseController
                 return $this->sendLockoutResponse($request);
             }
 
-            return $mgBroker->sendLoginResponse();
+            return redirect('/');
             
         }
         

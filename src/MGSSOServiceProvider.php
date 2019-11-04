@@ -37,16 +37,13 @@ class MGSSOServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             
-            $this->commands([
+            return $this->commands([
                 MGSSOIntegrationCommand::class,
             ]);
 
-        } else {
-            
-            $broker = $this->app->make('InspireSoftware\MGSSO\MGSSOBroker');
-            $broker->attach();
+        } 
 
-        }
+        new MGSSOBroker;
         
     }
 }

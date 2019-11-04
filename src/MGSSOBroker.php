@@ -2,7 +2,9 @@
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Lang;
-use Illuminate\Support\Facades\Session;
+use GuzzleHttp\Client;
+use \Session;
+use GuzzleHttp\Exception\RequestException;
 use InspireSoftware\MGSSO\Exceptions\Exception;
 use InspireSoftware\MGSSO\Exceptions\NotAttachedException;
 use \DB;
@@ -10,153 +12,141 @@ use App\Models\User;
 
 class MGSSOBroker
 {
-    /**
-     * Url of SSO server
-     * @var string
-     */
-    protected $url;
+    protected $clientSecret;
+    protected $clientId;
+    protected $serverUrl;
+    protected $mgSystemId;
+    protected $http;
 
-    /**
-     * My identifier, given by SSO provider.
-     * @var string
-     */
-    public $broker;
+    public function __construct(){
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        $this->clientId = env('SSO_CLIENT_ID');
+        $this->clientSecret = env('SSO_CLIENT_SECRET');
+        $this->serverUrl = env('SSO_SERVER');
+        $this->mgSystemId = env('SSO_MG_SYSTEM_ID');
 
-    /**
-     * My secret word, given by SSO provider.
-     * @var string
-     */
-    protected $secret;
-
-    /**
-     * Session token of the client
-     * @var string
-     */
-    public $token;
-
-    /**
-     * Cookie lifetime
-     * @var int
-     */
-    protected $cookie_lifetime;
-
-    /**
-     * Class constructor
-     *
-     * @param string $url    Url of SSO server
-     * @param string $broker My identifier, given by SSO provider.
-     * @param string $secret My secret word, given by SSO provider.
-     */
-    public function __construct()
-    {
-        $url = config('mgsso.credential.server');
-        $broker = config('mgsso.credential.system_id');
-        $secret = config('mgsso.credential.system_secret');
-        $cookie_lifetime = 3600;
-
-        if (!$url) throw new \InvalidArgumentException("SSO server URL not specified");
-        if (!$broker) throw new \InvalidArgumentException("SSO broker id not specified");
-
-        $this->url = $url;
-        $this->broker = $broker;
-        $this->secret = $secret;
-        $this->cookie_lifetime = $cookie_lifetime;
-
-        if (isset($_COOKIE[$this->getCookieName()])) $this->token = $_COOKIE[$this->getCookieName()];
+        $this->http = new Client([
+            'base_uri' => $this->serverUrl,
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->getAccessToken(),
+            ]
+        ]);
+        $this->getSSOUser();
     }
 
-    /**
-     * Get the cookie name.
-     *
-     * Note: Using the broker name in the cookie name.
-     * This resolves issues when multiple brokers are on the same domain.
-     *
-     * @return string
-     */
-    protected function getCookieName()
-    {
-        return 'sso_token_' . preg_replace('/[_\W]+/', '_', strtolower($this->broker));
+    protected function getAccessToken(){
+        return isset($_COOKIE['MGSSO_ACCESS_TOKEN']) ? $_COOKIE['MGSSO_ACCESS_TOKEN'] : null;
     }
 
-    /**
-     * Generate session id from session key
-     *
-     * @return string
-     */
-    protected function getSessionId()
-    {
-        if (!isset($this->token)) return null;
-
-        $checksum = hash('sha256', 'session' . $this->token . $this->secret);
-        return "SSO-{$this->broker}-{$this->token}-$checksum";
+    protected function setAuthResult($result){
+        setcookie('MGSSO_ACCESS_TOKEN', $result['access_token'], time() + 3600, '/');
+        setcookie('MGSSO_REFRESH_TOKEN', $result['refresh_token'], time() + 3600, '/');
+        setcookie('MGSSO_TOKEN_EXPIRES_IN', $result['expires_in'], time() + 3600, '/');
     }
 
-    /**
-     * Generate session token
-     */
-    public function generateToken()
-    {
-        if (isset($this->token)) return;
-
-        $this->token = base_convert(md5(uniqid(rand(), true)), 16, 36);
-        setcookie($this->getCookieName(), $this->token, time() + $this->cookie_lifetime, '/');
+    protected function setSSOUser($user){
+        $_SESSION['MGSSO_USER'] = $user;
+        $this->verifyAuth($user);
     }
 
-    /**
-     * Clears session token
-     */
-    public function clearToken()
-    {
-        setcookie($this->getCookieName(), null, 1, '/');
-        $this->token = null;
-    }
+    protected function verifyAuth($SSOUser){
 
-    /**
-     * Check if we have an SSO token.
-     *
-     * @return boolean
-     */
-    public function isAttached()
-    {
-        return isset($this->token);
-    }
-
-    /**
-     * Get URL to attach session at SSO server.
-     *
-     * @param array $params
-     * @return string
-     */
-    public function getAttachUrl($params = [])
-    {
-        $this->generateToken();
-
-        $data = [
-            'command' => 'attach',
-            'broker' => $this->broker,
-            'token' => $this->token,
-            'checksum' => hash('sha256', 'attach' . $this->token . $this->secret)
-        ] + $_GET;
-
-        return $this->url . "?" . http_build_query($data + $params);
-    }
-
-    /**
-     * Attach our session to the user's session on the SSO server.
-     *
-     * @param string|true $returnUrl  The URL the client should be returned to after attaching
-     */
-    public function attach($returnUrl = null)
-    {
         Session::put('origin', MGSSOHelper::isMobile());
         Session::put('nav', MGSSOHelper::getBrowser());
-        
-        if ($this->isAttached() || !isset($_SERVER['HTTP_HOST'])) return;
 
-        $protocol = !empty($_SERVER['HTTPS']) ? 'https://' : 'http://';
-        $returnUrl = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-        $params = ['return_url' => $returnUrl];
-        $url = $this->getAttachUrl($params);
+        $userModelClass = config('auth.providers.users.model');
+        $userTableName = (new $userModelClass)->getTable();
+        $user = $userModelClass::where('network_id', $SSOUser['id'])->first();
+
+        if(!$user){
+            $data = $SSOUser;
+            $data['network_id'] = $data['id'];
+            unset($data['id']);
+            $data['password'] = bcrypt('notnecessary');
+
+            $user = $userModelClass::query()->create($data);
+        }
+
+        Auth::loginUsingId($user->id, true);
+        if($SSOUser['verified'] && !$user->verified) $user->update(['verified' => 1]);
+
+    }
+
+    protected function formParams($params = []){
+        return array_merge([
+            'client_id' => $this->clientId,
+            'client_secret' => $this->clientSecret,
+            'access_token' => $this->getAccessToken(),
+            'mg_system_id' => $this->mgSystemId,
+        ], $params);
+    }
+
+    public function getSSOUser(){
+        if(isset($_SESSION['MGSSO_USER'])){
+            $this->verifyAuth($_SESSION['MGSSO_USER']);
+            return $_SESSION['MGSSO_USER'];
+        } else if($this->getAccessToken()){
+            try {
+                $response = $this->http->get('api/sso/user', [
+                    'form_params' => $this->formParams(),
+                ]);
+                $user = json_decode((string) $response->getBody(), true);
+                $this->setSSOUser($user);
+                return $this->getSSOUser();
+            } catch(RequestException $e){
+            }
+        }
+        
+        $this->logout();
+        return null;
+    }
+    
+    public function login($email, $password){ 
+        try {
+            $response = $this->http->post('oauth/token', [
+                'form_params' => [
+                    'grant_type' => 'password',
+                    'client_id' => $this->clientId,
+                    'client_secret' => $this->clientSecret,
+                    'username' => $email,
+                    'password' => $password,
+                ],
+            ]);
+            $result = json_decode((string) $response->getBody(), true);
+            $this->setAuthResult($result);
+            return true;
+        } catch(RequestException $e){
+            $error = json_decode($e->getResponse()->getBody());
+            return $error;
+        }
+    }
+
+    /**
+     * Logout at sso server.
+     */
+    public function logout()
+    {   
+        try {
+            $result = $this->http->post('api/sso/logout', [
+                'form_params' => $this->formParams(),
+            ]);
+            // return dd($result->getBody()->getContents());
+        } catch(RequestException $e){
+            // return dd('exception', $e->getResponse()->getBody()->getContents());
+        }
+        Auth::logout();
+        unset($_SESSION['MGSSO_USER']);
+        unset($_COOKIE['MGSSO_ACCESS_TOKEN']);
+        unset($_COOKIE['MGSSO_REFRESH_TOKEN']);
+        unset($_COOKIE['MGSSO_TOKEN_EXPIRES_IN']);
+        Session::flush();
+        session_destroy();
+
+        Session::put('origin', MGSSOHelper::isMobile());
+        Session::put('nav', MGSSOHelper::getBrowser());
     }
 
     /**
@@ -210,95 +200,13 @@ class MGSSOBroker
         return $data;
     }
 
-    /**
-     * Log the client in at the SSO server.
-     *
-     * Only brokers marked trused can collect and send the user's credentials. Other brokers should omit $username and
-     * $password.
-     *
-     * @param string $username
-     * @param string $password
-     * @return array  user info
-     * @throws Exception if login fails eg due to incorrect credentials
-     */
-    public function login($username = null, $password = null)
-    {
-        if (!isset($username)) $username = request('username');
-        if (!isset($password)) $password = request('password');
-
-        $currentUser = $this->getUserInfo();
-
-        if(!$currentUser){
-            $SSOUser = $this->request('POST', 'login', compact('username', 'password'), true);
-
-            if($SSOUser && isset($SSOUser['id'])) return $this->onSuccessLogin($SSOUser);
-
-            return null;
-
-        }
-
-        return $currentUser;
-    }
-
-    public function loginUsingId($userId){
-        $userModelClass = config('auth.providers.users.model');
-        $user = $userModelClass::findOrFail($userId);
-
-        $data = $user->toArray();
-        $data['password'] = bcrypt('mGgamer+159');
-        $SSOUser = $this->request('POST', 'force-login', $data);
-
-        if($SSOUser && isset($SSOUser['id'])) {
-            $user->update(['network_id' => $SSOUser['id']]);
-            return $this->onSuccessLogin($SSOUser);
-        }
-
-    }
-
-    /**
-     * Logout at sso server.
-     */
-    public function logout()
-    {
-        $this->request('POST', 'logout', [], true);
-        Auth::logout();
-        $this->clearToken();
-        Session::forget('user');
-        
-        $origin = Session::get('origin');
-        $browser = Session::get('nav');
-
-        Session::flush();
-
-        Session::put('origin', $origin);
-        Session::put('nav', $browser);
-    }
-
-    /**
-     * Get user information.
-     *
-     * @return object|null
-     */
-    public function getUserInfo()
-    {
-        if (!Session::exists('user')) {
-            $SSOUser = $this->request('GET', 'userInfo', [], true);
-            if($SSOUser && isset($SSOUser['id'])) Session::put('user', $SSOUser);
-            else Session::forget('user');
-        }
-
-        $user = Session::get('user');
-
-        return $user && isset($user['id']) ? $user : null;
-    }
-
     public function createUser($data){
 
         return $this->request('POST', 'create-user', $data);
 
     }
 
-    public function sendLoginResponse(){
+    /*public function sendLoginResponse(){
         $user = Auth::user();
 
         if($user){
@@ -320,40 +228,12 @@ class MGSSOBroker
         }
 
         return redirect('/');
-    }
+    } */
 
     public function resetPassword(){
         $userModelClass = config('auth.providers.users.model');
         
         return $this->request('POST', 'reset-password', ['email' => request('email')]);
-    }
-
-    public function onSuccessLogin($SSOUser){
-
-        if (!$SSOUser || !isset($SSOUser['id'])) return null;
-
-        Session::put('user', $SSOUser);
-        Session::put('origin', MGSSOHelper::isMobile());
-        Session::put('nav', MGSSOHelper::getBrowser());
-
-        $userModelClass = config('auth.providers.users.model');
-        $userTableName = (new $userModelClass)->getTable();
-        
-        $user = $userModelClass::where('network_id', $SSOUser['id'])->first();
-
-        if(!$user){
-            $data = $SSOUser;
-            $data['network_id'] = $data['id'];
-            unset($data['id']);
-            $data['password'] = bcrypt('notnecessary');
-
-            $user = $userModelClass::query()->create($data);
-        }
-
-        Auth::loginUsingId($user->id, true);
-        if($SSOUser['verified'] && !$user->verified) $user->update(['verified' => 1]);
-
-        return $user;
     }
 
     public function sendToken($email = null){

@@ -20,6 +20,7 @@ class MGSSOValidateTermsMiddleware
      */
     public function handle($request, Closure $next, $guard = null)
     {
+        return $next($request);
         $path = $request->path();
         $log = request('logUser', null);
         $userNetworkId = request('userNetworkId', null);
