@@ -38,42 +38,41 @@
                 <div class="form">
                     <h1>{{__('loginReg.LoginH')}}</h1>
                     <div class="form-area-login-register">
-                        <div   class="@php echo($errors->count() > 0) ? 'd-none' : 'hideBtn' @endphp">
+                        <div   class="@php echo(count($_SESSION['inputErrors']) > 0) ? 'd-none' : 'hideBtn' @endphp">
                             <a class="btn-login btn-default-login mb-20 btnOpenMenu" href="#">{{ __('loginReg.EmailPass') }}</a>
                             <a class="btn-login btn-default-login mb-20 btn-fb" href="{{url('login/facebook')}}">Facebook</a>
                             <a class="btn-login btn-default-login mb-20 btn-google" href="{{url('login/google')}}">Google</a>
                             <a class="btn-login btn-default-login-disabled mb-20 btn-twitch" href="#">Twitch</a>
                             <a class="btn-login btn-default-login-disabled mb-20 btn-twitter" href="#">Twitter</a>
                         </div>
-                        <div class="showBtn" @if($errors->count() > 0) style="display: block" @else style="display: none" @endif  >
+                        <div class="showBtn" @if(count($_SESSION['inputErrors']) > 0) style="display: block" @else style="display: none" @endif  >
                             <form id="formAll" class="form-group" method="POST" action="{{ route('login') }}" aria-label="{{ __('Login') }}">
                                 @csrf
 
                                 <fieldset class="form-group">
                                     <label for="email" class="text-uppercase">{{__('loginReg.E-mail')}}</label>
-                                    <input id="email" type="email" name="email" placeholder="{{ __('loginReg.E-mailPhrase') }}" class="form-control{{ $errors->has('email') ? ' is-invalid' : '' }}">
-
-                                    @if ($errors->has('email'))
+                                    <input id="email" type="email" name="email" placeholder="{{ __('loginReg.E-mailPhrase') }}" class="form-control{{ isset($_SESSION['inputErrors']['email']) ? ' is-invalid' : '' }}">
+                                    @if (isset($_SESSION['inputErrors']['email']))
                                         <span class="invalid-feedback" role="alert">
-            <strong>{{ $errors->first('email') }}</strong>
-                                    </span>
+                                            <strong>{{ $_SESSION['inputErrors']['email'][0] }}</strong>
+                                        </span>
                                     @endif
                                 </fieldset>
                                 <fieldset class="form-group">
                                     <label for="password" class="text-uppercase">{{ __('loginReg.Password') }}</label>
-                                    <input id="password" name="password" type="password" placeholder="{{ __('loginReg.PasswordPhrase') }}" class="form-control{{ $errors->has('password') ? ' is-invalid' : '' }}">
+                                    <input id="password" name="password" type="password" placeholder="{{ __('loginReg.PasswordPhrase') }}" class="form-control{{ isset($_SESSION['inputErrors']['password']) ? ' is-invalid' : '' }}">
 
-                                    @if ($errors->has('password'))
+                                    @if (isset($_SESSION['inputErrors']['password']))
                                         <span class="invalid-feedback" role="alert">
-            <strong>{{ $errors->first('password') }}</strong>
+                                        <strong>{{ $_SESSION['inputErrors']['password'][0] }}</strong>
                                     </span>
                                     @endif
                                 </fieldset>
                                 <div class="g-recaptcha-container">
                                     <div id="g-recaptcha" class="g-recaptcha" data-sitekey="6LfXC7IUAAAAABcCVJVg4RnNhdJDGgV8tDvSanAc" data-theme="dark" data-type="image" data-size="normal" data-badge="bottomright" data-tabindex="0"></div>
-                                    @if ($errors->has('g-recaptcha-response'))
+                                    @if (isset($_SESSION['inputErrors']['g-recaptcha-response']))
                                         <span class="invalid-feedback recaptcha-register" role="alert">
-        <strong>{{ $errors->first('g-recaptcha-response') }}</strong>
+                                        <strong>{{ $_SESSION['inputErrors']['g-recaptcha-response'][0] }}</strong>
                                     </span>
                                     @endif
                                 </div>
@@ -105,7 +104,7 @@
             </div>
         </div>
     </div>
-
-    {{Session::put('nav',verifiNav())}}
-    {{Session::put('origin',isMoble())}}
 @endsection
+@php 
+$_SESSION['inputErrors'] = [];
+@endphp

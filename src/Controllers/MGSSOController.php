@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Lang;
+use \Validator;
 
 use InspireSoftware\MGSSO\MGSSOBroker;
 use InspireSoftware\MGSSO\MGSSOHelper;
@@ -22,32 +23,16 @@ class MGSSOController extends BaseController
         return view('mgsso::login');
     }
 
-    public function authenticated(Request $request, $user)
-    {
-        if($user){
-            /*$broker = new MGSSOBroker;
-            $ssoUser = $broker->getUserInfo();
-            if ($ssoUser && isset($ssoUser['verified']) && !$ssoUser['verified']) {
-                $phrase =  Lang::get('loginReg.EmailMessagePhrase1');
-                $broker->logout();
-                return back()->with('warning', $phrase);
-            }*/
-            
-            if($user && $user->level_id === 2){
-                return redirect('/');
-            }
-
-        }
-
-        return redirect()->intended($this->redirectPath());
-    }
-
     public function login(Request $request, MGSSOBroker $mgBroker)
     {
-        $this->validateLogin($request);
-        $loginResult = $mgBroker->login($request->get('email'),$request->get('password'));
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|exists:users',
+            'password' => 'required|string',
+            'g-recaptcha-response' => config('app.env') !== 'local' ? 'required' : '',
+        ]);
 
-        if($loginResult){
+        $loginResult = $mgBroker->login($request->get('email'),$request->get('password'));
+        if($loginResult === true){
             
             if ($this->hasTooManyLoginAttempts($request)) {
                 $this->fireLockoutEvent($request);
@@ -59,14 +44,35 @@ class MGSSOController extends BaseController
             
         }
         
+        if($validator->fails()){
+            foreach($validator->errors()->messages() as $key => $errors){
+                $_SESSION['inputErrors'][$key] = $errors;
+            }
+        } else {
+            $_SESSION['inputErrors']['email'] = [];
+        }
+
+        $_SESSION['inputErrors']['email'][] = Lang::has('auth.failed')
+            ? Lang::get('auth.failed')
+            : 'These credentials do not match our records.';
+
         $this->incrementLoginAttempts($request);
 
-        return $this->sendFailedLoginResponse($request);
+        return redirect()
+            ->back()
+            ->withErrors([
+                'email' => $_SESSION['inputErrors']['email']
+            ]);
     }
 
     public function logout(MGSSOBroker $mgBroker){
         $mgBroker->logout();
         return redirect('/');
+    }
+
+    public function setLanguage(MGSSOBroker $mgBroker){
+        $mgBroker->setLanguage(request('locale'));
+        return response()->json(true);
     }
 
     public function sendToken(Request $request, MGSSOBroker $mgBroker){

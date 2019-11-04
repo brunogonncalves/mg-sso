@@ -44,6 +44,8 @@ class MGSSOServiceProvider extends ServiceProvider
         } 
 
         new MGSSOBroker;
+        $_SESSION['error'] = 'test'; 
+        view()->share($_SESSION);
         
     }
 }

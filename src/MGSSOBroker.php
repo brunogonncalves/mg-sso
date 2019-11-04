@@ -22,6 +22,11 @@ class MGSSOBroker
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
         }
+
+        if(!isset($_SESSION['inputErrors'])) $_SESSION['inputErrors'] = [];
+        if(!isset($_SESSION['locale'])) $_SESSION['locale'] = 'en';
+
+        Session::put('locale', $_SESSION['locale']);
         
         $this->clientId = env('SSO_CLIENT_ID');
         $this->clientSecret = env('SSO_CLIENT_SECRET');
@@ -81,6 +86,7 @@ class MGSSOBroker
             'client_secret' => $this->clientSecret,
             'access_token' => $this->getAccessToken(),
             'mg_system_id' => $this->mgSystemId,
+            'locale' => $_SESSION['locale'],
         ], $params);
     }
 
@@ -94,59 +100,79 @@ class MGSSOBroker
                     'form_params' => $this->formParams(),
                 ]);
                 $user = json_decode((string) $response->getBody(), true);
-                $this->setSSOUser($user);
-                return $this->getSSOUser();
+
+                if($user) {
+                    $this->setSSOUser($user);
+                    return $this->getSSOUser();
+                }
             } catch(RequestException $e){
             }
         }
         
-        $this->logout();
+        $this->logout(true);
         return null;
     }
     
     public function login($email, $password){ 
-        try {
-            $response = $this->http->post('oauth/token', [
-                'form_params' => [
-                    'grant_type' => 'password',
-                    'client_id' => $this->clientId,
-                    'client_secret' => $this->clientSecret,
-                    'username' => $email,
-                    'password' => $password,
-                ],
-            ]);
-            $result = json_decode((string) $response->getBody(), true);
-            $this->setAuthResult($result);
-            return true;
-        } catch(RequestException $e){
-            $error = json_decode($e->getResponse()->getBody());
-            return $error;
+        $currentUser = $this->getSSOUser();
+        if(!$currentUser){
+            try {
+                $response = $this->http->post('oauth/token', [
+                    'form_params' => [
+                        'grant_type' => 'password',
+                        'client_id' => $this->clientId,
+                        'client_secret' => $this->clientSecret,
+                        'username' => $email,
+                        'password' => $password,
+                    ],
+                ]);
+                $result = json_decode((string) $response->getBody(), true);
+                $this->setAuthResult($result);
+                return true;
+            } catch(RequestException $e){
+                $response = $e->getResponse();
+                if($response){
+                    $error = json_decode($response->getBody());
+                    return $error;
+                }
+    
+                return $e->getMessage();
+                
+            }
         }
+
+        return false;
     }
 
     /**
      * Logout at sso server.
      */
-    public function logout()
+    public function logout($ignoreRequest = false)
     {   
-        try {
-            $result = $this->http->post('api/sso/logout', [
-                'form_params' => $this->formParams(),
-            ]);
-            // return dd($result->getBody()->getContents());
-        } catch(RequestException $e){
-            // return dd('exception', $e->getResponse()->getBody()->getContents());
-        }
+        if(!$ignoreRequest){
+            try {
+                $this->http->post('api/sso/logout', [
+                    'form_params' => $this->formParams(),
+                ]);
+            } catch(RequestException $e){
+            }
+            Session::flush();
+            if (session_status() != PHP_SESSION_NONE) session_destroy();
+        } 
+        
         Auth::logout();
         unset($_SESSION['MGSSO_USER']);
         unset($_COOKIE['MGSSO_ACCESS_TOKEN']);
         unset($_COOKIE['MGSSO_REFRESH_TOKEN']);
         unset($_COOKIE['MGSSO_TOKEN_EXPIRES_IN']);
-        Session::flush();
-        session_destroy();
-
+        
         Session::put('origin', MGSSOHelper::isMobile());
         Session::put('nav', MGSSOHelper::getBrowser());
+    }
+
+    public function setLanguage($locale){
+        Session::put('locale', $locale);
+        $_SESSION['locale'] = $locale;
     }
 
     /**
