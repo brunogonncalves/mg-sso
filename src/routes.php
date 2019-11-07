@@ -9,5 +9,5 @@ Route::group(['middleware' => ['web']], function () {
     Route::name('send.token')->post('send-token','InspireSoftware\MGSSO\Controllers\MGSSOController@sendToken');
     Route::name('alter.password.user')->post('alter-password-user','InspireSoftware\MGSSO\Controllers\MGSSOController@changePassword');
     Route::name('check.email')->get('check-email/{email}','InspireSoftware\MGSSO\Controllers\MGSSOController@checkEmail');
-    Route::post('language', 'InspireSoftware\MGSSO\Controllers\MGSSOController@setLanguage');
+    Route::post('language', 'InspireSoftware\MGSSO\Controllers\MGSSOController@setLocale');
 });

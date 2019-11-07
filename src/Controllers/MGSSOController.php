@@ -11,7 +11,6 @@ use Illuminate\Support\Facades\Lang;
 use \Validator;
 
 use InspireSoftware\MGSSO\MGSSOBroker;
-use InspireSoftware\MGSSO\MGSSOHelper;
 use InspireSoftware\MGSSO\Traits\SSOSendsPasswordResetEmails;
 
 class MGSSOController extends BaseController
@@ -19,14 +18,13 @@ class MGSSOController extends BaseController
     use AuthorizesRequests, ValidatesRequests, AuthenticatesUsers, SSOSendsPasswordResetEmails;
 
     public function index(Request $request){
-        new MGSSOBroker;
         return view('mgsso::login');
     }
 
     public function login(Request $request, MGSSOBroker $mgBroker)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email|exists:users',
+            'email' => 'required|email',
             'password' => 'required|string',
             'g-recaptcha-response' => config('app.env') !== 'local' ? 'required' : '',
         ]);
@@ -70,8 +68,8 @@ class MGSSOController extends BaseController
         return redirect('/');
     }
 
-    public function setLanguage(MGSSOBroker $mgBroker){
-        $mgBroker->setLanguage(request('locale'));
+    public function setLocale(MGSSOBroker $mgBroker){
+        $mgBroker->setLocale(request('locale'));
         return response()->json(true);
     }
 

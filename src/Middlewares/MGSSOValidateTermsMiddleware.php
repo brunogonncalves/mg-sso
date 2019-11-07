@@ -6,10 +6,9 @@ use Illuminate\Support\Facades\Lang;
 
 use InspireSoftware\MGSSO\MGSSOBroker;
 
-use mundogamer\Models\User;
-
 class MGSSOValidateTermsMiddleware
 {
+    protected $ignoreRoutes = ['login', 'logout', 'terms-save', 'terms-user', 'step', 'save-step', 'check-nickname','select-step-state'];
     /**
      * Handle an incoming request.
      *
@@ -20,7 +19,6 @@ class MGSSOValidateTermsMiddleware
      */
     public function handle($request, Closure $next, $guard = null)
     {
-        return $next($request);
         $path = $request->path();
         $log = request('logUser', null);
         $userNetworkId = request('userNetworkId', null);
@@ -36,7 +34,6 @@ class MGSSOValidateTermsMiddleware
         // log user action from network
         if($log && $userNetworkId){
             $userModelClass = config('auth.providers.users.model');
-            $userTableName = (new $userModelClass)->getTable();
             $userForLog = $userModelClass::where('network_id', $userNetworkId)->first();
             if($userForLog) $userForLog->logUser($log, $userForLog->id);
         }
@@ -47,16 +44,15 @@ class MGSSOValidateTermsMiddleware
         // validate user verified
         if($user && !$user->verified){
             $broker = new MGSSOBroker;
-            $mgUser = $broker->getUserInfo();
+            $mgUser = $broker->getSSOUser();
             if(!$mgUser['verified']) {
                 $phrase =  Lang::get('loginReg.EmailMessagePhrase1');
-                MGSSOBroker::flush();
-                Auth::logout();
+                $broker->logout();
                 return back()->with('warning', $phrase);
             }
         }
 
-        foreach($ignoreRoutes as $route){
+        foreach($this->ignoreRoutes as $route){
             if($route === $path) $run = false;
         }
 

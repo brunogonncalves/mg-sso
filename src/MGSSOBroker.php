@@ -1,14 +1,11 @@
 <?php namespace InspireSoftware\MGSSO;
 
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\Facades\App;
 use GuzzleHttp\Client;
 use \Session;
 use GuzzleHttp\Exception\RequestException;
 use InspireSoftware\MGSSO\Exceptions\Exception;
-use InspireSoftware\MGSSO\Exceptions\NotAttachedException;
-use \DB;
-use App\Models\User;
 
 class MGSSOBroker
 {
@@ -18,15 +15,19 @@ class MGSSOBroker
     protected $mgSystemId;
     protected $http;
 
+    /**
+     * @method __construct
+     */
     public function __construct(){
-        if (session_status() == PHP_SESSION_NONE) {
+        if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-
+        
         if(!isset($_SESSION['inputErrors'])) $_SESSION['inputErrors'] = [];
         if(!isset($_SESSION['locale'])) $_SESSION['locale'] = 'en';
 
-        Session::put('locale', $_SESSION['locale']);
+        Session::put('locale', $this->getLocale());
+        App::setLocale($this->getLocale());
         
         $this->clientId = env('SSO_CLIENT_ID');
         $this->clientSecret = env('SSO_CLIENT_SECRET');
@@ -42,21 +43,33 @@ class MGSSOBroker
         $this->getSSOUser();
     }
 
+    /**
+     * @method getAccessToken
+     */
     protected function getAccessToken(){
-        return isset($_COOKIE['MGSSO_ACCESS_TOKEN']) ? $_COOKIE['MGSSO_ACCESS_TOKEN'] : null;
+        return isset($_SESSION['MGSSO_ACCESS_TOKEN']) ? $_SESSION['MGSSO_ACCESS_TOKEN'] : null;
     }
 
+    /**
+     * @method setAuthResult
+     */
     protected function setAuthResult($result){
-        setcookie('MGSSO_ACCESS_TOKEN', $result['access_token'], time() + 3600, '/');
-        setcookie('MGSSO_REFRESH_TOKEN', $result['refresh_token'], time() + 3600, '/');
-        setcookie('MGSSO_TOKEN_EXPIRES_IN', $result['expires_in'], time() + 3600, '/');
+        $_SESSION['MGSSO_ACCESS_TOKEN'] = $result['access_token'];
+        $_SESSION['MGSSO_REFRESH_TOKEN'] = $result['refresh_token'];
+        $_SESSION['MGSSO_TOKEN_EXPIRES_IN'] = $result['expires_in'];
     }
 
+    /**
+     * @method setSSOUser
+     */
     protected function setSSOUser($user){
         $_SESSION['MGSSO_USER'] = $user;
         $this->verifyAuth($user);
     }
 
+    /**
+     * @method verifyAuth
+     */
     protected function verifyAuth($SSOUser){
 
         Session::put('origin', MGSSOHelper::isMobile());
@@ -80,39 +93,57 @@ class MGSSOBroker
 
     }
 
+    /**
+     * @method formParams
+     */
     protected function formParams($params = []){
         return array_merge([
             'client_id' => $this->clientId,
             'client_secret' => $this->clientSecret,
-            'access_token' => $this->getAccessToken(),
+            //'access_token' => $this->getAccessToken(),
+            'refresh_token' => $_SESSION['MGSSO_REFRESH_TOKEN'],
             'mg_system_id' => $this->mgSystemId,
-            'locale' => $_SESSION['locale'],
+            'locale' => $this->getLocale(),
         ], $params);
     }
 
+    /**
+     * @method getSSOUser
+     */
     public function getSSOUser(){
         if(isset($_SESSION['MGSSO_USER'])){
             $this->verifyAuth($_SESSION['MGSSO_USER']);
             return $_SESSION['MGSSO_USER'];
         } else if($this->getAccessToken()){
+            $this->http = new Client([
+                'base_uri' => $this->serverUrl,
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->getAccessToken(),
+                ]
+            ]);
             try {
                 $response = $this->http->get('api/sso/user', [
                     'form_params' => $this->formParams(),
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $this->getAccessToken(),
+                    ]
                 ]);
                 $user = json_decode((string) $response->getBody(), true);
-
                 if($user) {
                     $this->setSSOUser($user);
                     return $this->getSSOUser();
-                }
+                } 
             } catch(RequestException $e){
+                return dd($e->getResponse()->getBody(), $e->getResponse()->getContent());
             }
         }
-        
         $this->logout(true);
         return null;
     }
     
+    /**
+     * @method login
+     */
     public function login($email, $password){ 
         $currentUser = $this->getSSOUser();
         if(!$currentUser){
@@ -124,13 +155,14 @@ class MGSSOBroker
                         'client_secret' => $this->clientSecret,
                         'username' => $email,
                         'password' => $password,
+                        'locale' => $this->getLocale(),
                     ],
                 ]);
                 $result = json_decode((string) $response->getBody(), true);
                 $this->setAuthResult($result);
                 return true;
             } catch(RequestException $e){
-                $response = $e->getResponse();
+                $response = $e->getResponse();return dd('erro no login Exception', $response);
                 if($response){
                     $error = json_decode($response->getBody());
                     return $error;
@@ -145,7 +177,7 @@ class MGSSOBroker
     }
 
     /**
-     * Logout at sso server.
+     * @method logout
      */
     public function logout($ignoreRequest = false)
     {   
@@ -162,17 +194,41 @@ class MGSSOBroker
         
         Auth::logout();
         unset($_SESSION['MGSSO_USER']);
-        unset($_COOKIE['MGSSO_ACCESS_TOKEN']);
-        unset($_COOKIE['MGSSO_REFRESH_TOKEN']);
-        unset($_COOKIE['MGSSO_TOKEN_EXPIRES_IN']);
+        unset($_SESSION['MGSSO_ACCESS_TOKEN']);
+        unset($_SESSION['MGSSO_REFRESH_TOKEN']);
+        unset($_SESSION['MGSSO_TOKEN_EXPIRES_IN']);
         
         Session::put('origin', MGSSOHelper::isMobile());
         Session::put('nav', MGSSOHelper::getBrowser());
     }
 
-    public function setLanguage($locale){
+    /**
+     * @method setLocale
+     */
+    public function setLocale($locale){
         Session::put('locale', $locale);
         $_SESSION['locale'] = $locale;
+    }
+
+    /**
+     * @method getLocale
+     */
+    public function getLocale(){
+        return $_SESSION['locale'];
+    }
+
+    /**
+     * @method create
+     */
+    public function create($attributes){
+        try {
+            $response = $this->http->post('api/sso/create', [
+                'form_params' => $this->formParams($attributes),
+            ]);
+            return json_decode($response->getBody(), true);
+        } catch(RequestException $e){
+            return dd($e->getResponse()->getBody());
+        }
     }
 
     /**
@@ -224,12 +280,6 @@ class MGSSOBroker
         if (!$ignoreExceptions && $httpCode >= 400 && isset($data['error'])) throw new Exception($data['error'] ?: $response, $httpCode);
 
         return $data;
-    }
-
-    public function createUser($data){
-
-        return $this->request('POST', 'create-user', $data);
-
     }
 
     /*public function sendLoginResponse(){

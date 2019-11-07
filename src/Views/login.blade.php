@@ -36,7 +36,6 @@
             <div class="container">
                 <div class="offer-left"><span class="white">{{__('loginReg.JoinNow')}}</span></div>
                 <div class="form">
-                    <h1>{{__('loginReg.LoginH')}}</h1>
                     <div class="form-area-login-register">
                         <div   class="@php echo(count($_SESSION['inputErrors']) > 0) ? 'd-none' : 'hideBtn' @endphp">
                             <a class="btn-login btn-default-login mb-20 btnOpenMenu" href="#">{{ __('loginReg.EmailPass') }}</a>
