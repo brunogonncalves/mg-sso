@@ -1,6 +1,7 @@
 <?php namespace InspireSoftware\MGSSO\Traits;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Password;
 
 use InspireSoftware\MGSSO\MGSSOBroker;
@@ -26,11 +27,13 @@ trait SSOSendsPasswordResetEmails
     {
         $this->validateEmail($request);
         
-        $response = $broker->resetPassword();
+        $response = $broker->resetPassword($request->get('email'));
 
         return $response == Password::RESET_LINK_SENT
-            ? $this->sendResetLinkResponse($response)
-            : $this->sendResetLinkFailedResponse($request, $response);
+            ? $this->sendResetLinkResponse(
+                Lang::has('rescue_token.email_sent') ? Lang::get('rescue_token.email_sent') : 'Email sent successful')
+            : $this->sendResetLinkFailedResponse($request, 
+            Lang::has('rescue_token.error_sent') ? Lang::get('rescue_token.error_sent') : 'Ops! error send email');
     }
     /**
      * Validate the email for the given request.
@@ -50,7 +53,7 @@ trait SSOSendsPasswordResetEmails
      */
     protected function sendResetLinkResponse($response)
     {
-        return back()->with('status', trans($response));
+        return back()->with('status', $response);
     }
     /**
      * Get the response for a failed password reset link.
@@ -62,7 +65,7 @@ trait SSOSendsPasswordResetEmails
     protected function sendResetLinkFailedResponse(Request $request, $response)
     {
         return back()->withErrors(
-            ['email' => trans($response)]
+            ['email' => $response]
         );
     }
 }

@@ -83,13 +83,18 @@ class MGSSOController extends BaseController
                 $user->verified = 0;
                 $mgBroker->sendToken($user->email);
                 $user->save();
-                return redirect()->back()->with('status', 'Email successfully sent');
+                return redirect()->back()->with('status', 
+                    Lang::has('rescue_token.email_sent') ? Lang::get('rescue_token.email_sent') : 'Email successfully sent');
             } catch (\Exception $ex){
-                return redirect()->back()->with('status', 'Ops! error send email');
+                return redirect()->back()->with('status', 
+                    Lang::has('rescue_token.error_sent') ? Lang::get('rescue_token.error_sent') : 'Ops! error send email'
+                );
             }
 
         } else{
-            return redirect()->back()->with('status', 'Is email NOT already in our database');
+            return redirect()->back()->with('status', 
+                Lang::has('rescue_token.email_not_exists') ? Lang::get('rescue_token.email_not_exists') : 'Is email NOT already in our database'
+            );
         }
     }
 

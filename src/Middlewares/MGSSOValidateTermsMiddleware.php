@@ -8,7 +8,7 @@ use InspireSoftware\MGSSO\MGSSOBroker;
 
 class MGSSOValidateTermsMiddleware
 {
-    protected $ignoreRoutes = ['login', 'logout', 'terms-save', 'terms-user', 'step', 'save-step', 'check-nickname','select-step-state'];
+    protected $ignoreRoutes = ['', 'login', 'logout', 'terms-save', 'terms-user', 'step', 'save-step', 'check-nickname','select-step-state'];
     /**
      * Handle an incoming request.
      *
@@ -41,17 +41,6 @@ class MGSSOValidateTermsMiddleware
         // verify flash session from network
         if($flashSessionStatus) session()->flash($flashSessionStatus, $request->get('message'));
 
-        // validate user verified
-        if($user && !$user->verified){
-            $broker = new MGSSOBroker;
-            $mgUser = $broker->getSSOUser();
-            if(!$mgUser['verified']) {
-                $phrase =  Lang::get('loginReg.EmailMessagePhrase1');
-                $broker->logout();
-                return back()->with('warning', $phrase);
-            }
-        }
-
         foreach($this->ignoreRoutes as $route){
             if($route === $path) $run = false;
         }
@@ -59,6 +48,16 @@ class MGSSOValidateTermsMiddleware
         if($user && $run){
             if(empty($user->terms_use) || empty($user->policy)) return redirect('terms-user');
             if(empty($user->nickname) || empty($user->date_birth)) return redirect('step');
+            // validate user verified
+            if($user && !$user->verified){
+                $broker = new MGSSOBroker;
+                $mgUser = $broker->getSSOUser();
+                if(!$mgUser['verified']) {
+                    $phrase =  Lang::get('loginReg.EmailMessagePhrase1');
+                    $broker->logout();
+                    return back()->with('warning', $phrase);
+                }
+            }
         }
 
         return $next($request);

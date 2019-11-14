@@ -14,25 +14,24 @@ class MGSSOBroker
     protected $serverUrl;
     protected $mgSystemId;
     protected $http;
+    protected $countryModel;
 
     /**
      * @method __construct
      */
     public function __construct(){
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        if (session_status() === PHP_SESSION_NONE) session_start();
         
         if(!isset($_SESSION['inputErrors'])) $_SESSION['inputErrors'] = [];
-        if(!isset($_SESSION['locale'])) $_SESSION['locale'] = 'en';
-
-        Session::put('locale', $this->getLocale());
-        App::setLocale($this->getLocale());
         
         $this->clientId = env('SSO_CLIENT_ID');
         $this->clientSecret = env('SSO_CLIENT_SECRET');
-        $this->serverUrl = env('SSO_SERVER');
+        $this->serverUrl = env('API_URL_NETWORK', 'https://www.mgnetwork.xyz');
+
+        if(substr($this->serverUrl, -1) == '/') $this->serverUrl = rtrim($this->serverUrl, '/');
+
         $this->mgSystemId = env('SSO_MG_SYSTEM_ID');
+        $this->countryModel = env('COUNTRY_MODEL', 'mundogamer\Models\Country');
 
         $this->http = new Client([
             'base_uri' => $this->serverUrl,
@@ -40,7 +39,25 @@ class MGSSOBroker
                 'Authorization' => 'Bearer ' . $this->getAccessToken(),
             ]
         ]);
+
+        $this->adjustLanguage();
         $this->getSSOUser();
+    }
+
+    protected function adjustLanguage(){
+
+        if(!isset($_SESSION['locale'])){
+            $arr_ip = geoip()->getLocation($_SERVER['REMOTE_ADDR']);
+            $country  = $this->countryModel::where('code2', $arr_ip['iso_code'])->first();
+            if(!empty($country->language_id)){
+                $activeLanguage = $country->language->name_abrev;
+                $locale = $activeLanguage;
+            }
+        } else $locale = $_SESSION['locale'];
+
+        Session::put('locale', $locale);
+        $_SESSION['locale'] = $locale;
+        App::setLocale($locale);
     }
 
     /**
@@ -87,7 +104,6 @@ class MGSSOBroker
 
             $user = $userModelClass::query()->create($data);
         }
-
         Auth::loginUsingId($user->id, true);
         if($SSOUser['verified'] && !$user->verified) $user->update(['verified' => 1]);
 
@@ -97,11 +113,12 @@ class MGSSOBroker
      * @method formParams
      */
     protected function formParams($params = []){
+
+        if(isset($_SESSION['MGSSO_REFRESH_TOKEN'])) $params[] = $_SESSION['MGSSO_REFRESH_TOKEN'];
+
         return array_merge([
             'client_id' => $this->clientId,
             'client_secret' => $this->clientSecret,
-            //'access_token' => $this->getAccessToken(),
-            'refresh_token' => $_SESSION['MGSSO_REFRESH_TOKEN'],
             'mg_system_id' => $this->mgSystemId,
             'locale' => $this->getLocale(),
         ], $params);
@@ -132,7 +149,7 @@ class MGSSOBroker
                 if($user) {
                     $this->setSSOUser($user);
                     return $this->getSSOUser();
-                } 
+                }
             } catch(RequestException $e){
                 return dd($e->getResponse()->getBody(), $e->getResponse()->getContent());
             }
@@ -156,13 +173,14 @@ class MGSSOBroker
                         'username' => $email,
                         'password' => $password,
                         'locale' => $this->getLocale(),
+                        'mg_system_id' => $this->mgSystemId,
                     ],
                 ]);
                 $result = json_decode((string) $response->getBody(), true);
                 $this->setAuthResult($result);
                 return true;
             } catch(RequestException $e){
-                $response = $e->getResponse();return dd('erro no login Exception', $response);
+                $response = $e->getResponse();
                 if($response){
                     $error = json_decode($response->getBody());
                     return $error;
@@ -232,90 +250,43 @@ class MGSSOBroker
     }
 
     /**
-     * Get the request url for a command
-     *
-     * @param string $command
-     * @param array  $params   Query parameters
-     * @return string
+     * @method sendToken
      */
-    protected function getRequestUrl($command, $params = [])
-    {
-        $params['command'] = $command;
-        return $this->url . '?' . http_build_query($params);
-    }
-
-    protected function request($method, $command, $data = null, $ignoreExceptions = false)
-    {   
-        if(!$this->isAttached()) $this->attach();
-        
-        if(is_array($data)){
-            $data['token'] = $this->token;
-            $data['broker'] = $this->broker;
-            $data['checksum'] = hash('sha256', 'session' . $this->token . $this->secret);
-        }
-
-        $url = $this->getRequestUrl($command, !$data || $method === 'POST' ? [] : $data);
-
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json', 'Authorization: Bearer '. $this->getSessionID()]);
-
-        if (empty($data)) $data = [];
-        $post = is_string($data) ? $data : http_build_query($data);
-
-        if ($method === 'POST') curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
-
-        $response = curl_exec($ch); 
-        if (curl_errno($ch) != 0) {
-            $message = 'Server request failed: ' . curl_error($ch);
-            throw new Exception($message);
-        }
-
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        list($contentType) = explode(';', curl_getinfo($ch, CURLINFO_CONTENT_TYPE));
-        
-        $data = json_decode($response, true);
-
-        if (!$ignoreExceptions && $httpCode >= 400 && isset($data['error'])) throw new Exception($data['error'] ?: $response, $httpCode);
-
-        return $data;
-    }
-
-    /*public function sendLoginResponse(){
-        $user = Auth::user();
-
-        if($user){
-            if(!$user->verified){
-                $SSOUser = $this->getUserInfo();
-                if(!$SSOUser || !isset($SSOUser['verified']) || !$SSOUser['verified']) {
-                    
-                    // send email for verify
-                    $this->request('POST', 'send-email-verify', ['userId' => $SSOUser['id']]);
-                    
-                    $phrase =  Lang::get('loginReg.EmailMessagePhrase1');
-                    $this->logout();
-                    return back()->with('warning', $phrase);
-                }
-            }
-    
-            if(empty($user->terms_use) || empty($user->policy)) return redirect('terms-user');
-            if(empty($user->nickname) || empty($user->date_birth)) return redirect('step');
-        }
-
-        return redirect('/');
-    } */
-
-    public function resetPassword(){
-        $userModelClass = config('auth.providers.users.model');
-        
-        return $this->request('POST', 'reset-password', ['email' => request('email')]);
-    }
-
     public function sendToken($email = null){
 
-        if(!$email) $email = request('email');
-        return $this->request('POST', 'send-token', ['email' => $email]);
+        try {
+            $response = $this->http->post('api/sso/rescue-token', [
+                'form_params' => [
+                    'email' => $email,
+                    'mg_system_id' => $this->mgSystemId,
+                ],
+            ]);
+            return json_decode($response->getBody(), true);
+        } catch(RequestException $e){
+            $response = $e->getResponse();
+            return dd($e->getMessage(), $response ? $response->getBody()->getContents() : null);
+        }
+
+    }
+
+    /**
+     * @method resetPassword
+     */
+    public function resetPassword($email){
+
+        try {
+            $response = $this->http->post('api/sso/reset-password', [
+                'form_params' => [
+                    'email' => $email,
+                    'mg_system_id' => $this->mgSystemId,
+                ],
+            ]);
+            return json_decode($response->getBody(), true);
+        } catch(RequestException $e){
+            $response = $e->getResponse();
+            return dd($response->getBody()->getContents());
+            return $response ? json_decode($response->getBody(), true) : $e->getMessage();
+        }
 
     }
 
