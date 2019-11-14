@@ -8,7 +8,7 @@ use InspireSoftware\MGSSO\MGSSOBroker;
 
 class MGSSOValidateTermsMiddleware
 {
-    protected $ignoreRoutes = ['', 'login', 'logout', 'terms-save', 'terms-user', 'step', 'save-step', 'check-nickname','select-step-state'];
+    protected $ignoreRoutes = ['login', 'logout', 'terms-save', 'terms-user', 'step', 'save-step', 'check-nickname','select-step-state'];
     /**
      * Handle an incoming request.
      *
