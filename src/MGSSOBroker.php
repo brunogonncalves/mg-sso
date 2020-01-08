@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\App;
 use GuzzleHttp\Client;
+
+use mundogamer\Achievements\AccountVerified;
 use \Session;
 use GuzzleHttp\Exception\RequestException;
 use InspireSoftware\MGSSO\Exceptions\Exception;
@@ -20,17 +22,20 @@ class MGSSOBroker
      * @method __construct
      */
     public function __construct(){
+
         if (session_status() === PHP_SESSION_NONE) session_start();
-        
+
         if(!isset($_SESSION['inputErrors'])) $_SESSION['inputErrors'] = [];
-        
+
         $this->clientId = env('SSO_CLIENT_ID');
         $this->clientSecret = env('SSO_CLIENT_SECRET');
+
         $this->serverUrl = env('API_URL_NETWORK', 'https://www.mgnetwork.xyz');
 
         if(substr($this->serverUrl, -1) == '/') $this->serverUrl = rtrim($this->serverUrl, '/');
 
         $this->mgSystemId = env('SSO_MG_SYSTEM_ID');
+
         $this->countryModel = env('COUNTRY_MODEL', 'mundogamer\Models\Country');
 
         $this->http = new Client([
@@ -92,6 +97,7 @@ class MGSSOBroker
         Session::put('origin', MGSSOHelper::isMobile());
         Session::put('nav', MGSSOHelper::getBrowser());
 
+
         $userModelClass = config('auth.providers.users.model');
         $userTableName = (new $userModelClass)->getTable();
         $user = $userModelClass::where('network_id', $SSOUser['id'])->first();
@@ -106,6 +112,20 @@ class MGSSOBroker
         }
         Auth::loginUsingId($user->id, true);
         if($SSOUser['verified'] && !$user->verified) $user->update(['verified' => 1]);
+        if($user->verified == 1){
+
+            $this->unlockUserVerified($user->id);
+        }
+
+    }
+
+    public function unlockUserVerified($iduser){
+
+        /* $result = new  AccountVerified();
+
+        if(!hasAchievements($iduser,$result->id)){
+            saveAchievementAll($result,15,$iduser);
+        } */
 
     }
 
@@ -129,7 +149,9 @@ class MGSSOBroker
      */
     public function getSSOUser(){
         if(isset($_SESSION['MGSSO_USER'])){
+
             $this->verifyAuth($_SESSION['MGSSO_USER']);
+
             return $_SESSION['MGSSO_USER'];
         } else if($this->getAccessToken()){
             $this->http = new Client([
@@ -157,13 +179,15 @@ class MGSSOBroker
         $this->logout(true);
         return null;
     }
-    
+
     /**
      * @method login
      */
-    public function login($email, $password){ 
+    public function login($email, $password){
         $currentUser = $this->getSSOUser();
+
         if(!$currentUser){
+
             try {
                 $response = $this->http->post('oauth/token', [
                     'form_params' => [
@@ -177,7 +201,9 @@ class MGSSOBroker
                     ],
                 ]);
                 $result = json_decode((string) $response->getBody(), true);
+
                 $this->setAuthResult($result);
+
                 return true;
             } catch(RequestException $e){
                 $response = $e->getResponse();
@@ -185,11 +211,12 @@ class MGSSOBroker
                     $error = json_decode($response->getBody());
                     return $error;
                 }
-    
+
                 return $e->getMessage();
-                
+
             }
         }
+
 
         return false;
     }
@@ -198,7 +225,7 @@ class MGSSOBroker
      * @method logout
      */
     public function logout($ignoreRequest = false)
-    {   
+    {
         if(!$ignoreRequest){
             try {
                 $this->http->post('api/sso/logout', [
@@ -208,14 +235,14 @@ class MGSSOBroker
             }
             Session::flush();
             if (session_status() != PHP_SESSION_NONE) session_destroy();
-        } 
-        
+        }
+
         Auth::logout();
         unset($_SESSION['MGSSO_USER']);
         unset($_SESSION['MGSSO_ACCESS_TOKEN']);
         unset($_SESSION['MGSSO_REFRESH_TOKEN']);
         unset($_SESSION['MGSSO_TOKEN_EXPIRES_IN']);
-        
+
         Session::put('origin', MGSSOHelper::isMobile());
         Session::put('nav', MGSSOHelper::getBrowser());
     }
@@ -224,6 +251,22 @@ class MGSSOBroker
      * @method setLocale
      */
     public function setLocale($locale){
+        Session::put('locale', $locale);
+        $_SESSION['locale'] = $locale;
+    }
+
+    public static function forceLanguage($language){
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        // find country by language id (because we dont have access to language model here)
+        $countryModel = env('COUNTRY_MODEL', 'mundogamer\Models\Country');
+        $country = $countryModel::where('language_id', $language)->first();
+        try {
+            $locale = $country->language->name_abrev;
+        } catch(\Exception $e){
+            $locale = 'en';
+        }
+        App::setLocale($locale);
         Session::put('locale', $locale);
         $_SESSION['locale'] = $locale;
     }
@@ -239,6 +282,13 @@ class MGSSOBroker
      * @method create
      */
     public function create($attributes){
+        try{
+            $country  = $this->countryModel::find($attributes['country_id']);
+            $this->setLocale($country->language->name_abrev);
+        } catch (\Exception $e){
+            $this->setLocale('en');
+        }
+        
         try {
             $response = $this->http->post('api/sso/create', [
                 'form_params' => $this->formParams($attributes),
@@ -307,8 +357,8 @@ class MGSSOBroker
     public function setUserStatus($status){
         $user = auth()->user();
         return $this->request('POST', 'set-user-status', [
-            'email' => $user->email, 
-            'id' => $user->network_id, 
+            'email' => $user->email,
+            'id' => $user->network_id,
             'status' => $status,
         ]);
     }

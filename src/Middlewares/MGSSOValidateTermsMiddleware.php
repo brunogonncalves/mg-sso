@@ -23,6 +23,7 @@ class MGSSOValidateTermsMiddleware
         $log = request('logUser', null);
         $userNetworkId = request('userNetworkId', null);
         $slashPos = stripos($path, '/');
+        $forceLanguage = request('language');
 
         if($slashPos !== false) $path = substr($path, 0, $slashPos);
 
@@ -43,6 +44,11 @@ class MGSSOValidateTermsMiddleware
 
         foreach($this->ignoreRoutes as $route){
             if($route === $path) $run = false;
+        }
+
+        // usually when user comes from network without login
+        if($forceLanguage){
+            MGSSOBroker::forceLanguage($forceLanguage);
         }
 
         if($user && $run){

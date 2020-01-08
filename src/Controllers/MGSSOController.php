@@ -5,8 +5,6 @@ use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Lang;
 use \Validator;
 
@@ -17,7 +15,7 @@ class MGSSOController extends BaseController
 {
     use AuthorizesRequests, ValidatesRequests, AuthenticatesUsers, SSOSendsPasswordResetEmails;
 
-    public function index(Request $request){
+    public function index(){
         return view('mgsso::login');
     }
 
