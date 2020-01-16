@@ -30,7 +30,7 @@ class MGSSOBroker
         $this->clientId = env('SSO_CLIENT_ID');
         $this->clientSecret = env('SSO_CLIENT_SECRET');
 
-        $this->serverUrl = env('API_URL_NETWORK', 'https://www.mgnetwork.xyz');
+        $this->serverUrl = env('SSO_SERVER', 'https://www.mgnetwork.xyz');
 
         if(substr($this->serverUrl, -1) == '/') $this->serverUrl = rtrim($this->serverUrl, '/');
 
@@ -92,22 +92,19 @@ class MGSSOBroker
     /**
      * @method verifyAuth
      */
-    protected function verifyAuth($SSOUser){
+    protected function verifyAuth($SSOUser, $forceLog = false){
 
         Session::put('origin', MGSSOHelper::isMobile());
         Session::put('nav', MGSSOHelper::getBrowser());
 
-
-        $userModelClass = config('auth.providers.users.model');
-        $userTableName = (new $userModelClass)->getTable();
-        $user = $userModelClass::where('network_id', $SSOUser['id'])->first();
-
+        $user = $this->getLocalUser();
         if(!$user){
             $data = $SSOUser;
             $data['network_id'] = $data['id'];
             unset($data['id']);
             $data['password'] = bcrypt('notnecessary');
 
+            $userModelClass = config('auth.providers.users.model');
             $user = $userModelClass::query()->create($data);
         }
         Auth::loginUsingId($user->id, true);
@@ -180,6 +177,16 @@ class MGSSOBroker
         return null;
     }
 
+    public function getLocalUser(){
+
+        $ssoUser = $this->getSSOUser();
+        $userModelClass = config('auth.providers.users.model');
+        $user = $userModelClass::where('network_id', $ssoUser['id'])->first();
+
+        return $user;
+
+    }
+
     /**
      * @method login
      */
@@ -202,8 +209,21 @@ class MGSSOBroker
                 ]);
                 $result = json_decode((string) $response->getBody(), true);
 
-                $this->setAuthResult($result);
+                $this->setAuthResult($result, true);
 
+                $logModel = config('auth.providers.users.logModel');
+                if($logModel) {
+                    $user = $this->getSSOUser();
+                    $logModel::create([
+                        'user_id' => $user->id,
+                        'date_last_login' => date('Y-m-d H:i:s'),
+                        'ip' =>  \Illuminate\Support\Facades\Request::getClientIp(),
+                        'source_id' => MGSSOHelper::isMobile(),
+                        'browser' => MGSSOHelper::getBrowser(),
+                        'system_log_action_id' => 13,
+                    ]);
+    
+                }
                 return true;
             } catch(RequestException $e){
                 $response = $e->getResponse();
@@ -295,7 +315,7 @@ class MGSSOBroker
             ]);
             return json_decode($response->getBody(), true);
         } catch(RequestException $e){
-            return dd($e->getResponse()->getBody());
+            return dd(json_decode($e->getResponse()->getBody(), true), $attributes);
         }
     }
 
