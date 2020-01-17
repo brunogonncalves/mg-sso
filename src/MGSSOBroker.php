@@ -22,7 +22,7 @@ class MGSSOBroker
      * @method __construct
      */
     public function __construct(){
-
+        
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         if(!isset($_SESSION['inputErrors'])) $_SESSION['inputErrors'] = [];
@@ -30,7 +30,7 @@ class MGSSOBroker
         $this->clientId = env('SSO_CLIENT_ID');
         $this->clientSecret = env('SSO_CLIENT_SECRET');
 
-        $this->serverUrl = env('SSO_SERVER', 'https://www.mgnetwork.xyz');
+        $this->serverUrl = env('SSO_SERVER', 'http://localhost:8001');
 
         if(substr($this->serverUrl, -1) == '/') $this->serverUrl = rtrim($this->serverUrl, '/');
 
@@ -44,7 +44,7 @@ class MGSSOBroker
                 'Authorization' => 'Bearer ' . $this->getAccessToken(),
             ]
         ]);
-
+        
         $this->adjustLanguage();
         $this->getSSOUser();
     }
@@ -57,7 +57,7 @@ class MGSSOBroker
             if(!empty($country->language_id)){
                 $activeLanguage = $country->language->name_abrev;
                 $locale = $activeLanguage;
-            }
+            } else $locale = 'en';
         } else $locale = $_SESSION['locale'];
 
         Session::put('locale', $locale);
@@ -92,12 +92,12 @@ class MGSSOBroker
     /**
      * @method verifyAuth
      */
-    protected function verifyAuth($SSOUser, $forceLog = false){
+    protected function verifyAuth($SSOUser){
 
         Session::put('origin', MGSSOHelper::isMobile());
         Session::put('nav', MGSSOHelper::getBrowser());
 
-        $user = $this->getLocalUser();
+        $user = $this->getLocalUser($SSOUser);
         if(!$user){
             $data = $SSOUser;
             $data['network_id'] = $data['id'];
@@ -107,11 +107,25 @@ class MGSSOBroker
             $userModelClass = config('auth.providers.users.model');
             $user = $userModelClass::query()->create($data);
         }
-        Auth::loginUsingId($user->id, true);
-        if($SSOUser['verified'] && !$user->verified) $user->update(['verified' => 1]);
-        if($user->verified == 1){
 
-            $this->unlockUserVerified($user->id);
+        Auth::loginUsingId($user->id, true);
+
+        if($SSOUser['verified'] && !$user->verified) $user->update(['verified' => 1]);
+
+        if($user->verified == 1) $this->unlockUserVerified($user->id);
+        if($this->logLogin()){
+            $logModel = config('auth.providers.users.logModel');
+            if($logModel) {
+                $logModel::create([
+                    'user_id' => $user->id,
+                    'date_last_login' => date('Y-m-d H:i:s'),
+                    'ip' =>  \Illuminate\Support\Facades\Request::getClientIp(),
+                    'source_id' => MGSSOHelper::isMobile(),
+                    'browser' => MGSSOHelper::getBrowser(),
+                    'system_log_action_id' => 13,
+                ]);
+            }
+            $this->setNeedLogLogin(false);
         }
 
     }
@@ -141,10 +155,19 @@ class MGSSOBroker
         ], $params);
     }
 
+    protected function setNeedLogLogin($value){
+        $_SESSION['NEED_LOG_LOGIN'] = $value;
+    }
+
+    protected function logLogin(){
+        return isset($_SESSION['NEED_LOG_LOGIN']) && $_SESSION['NEED_LOG_LOGIN'] === true;
+    }
+
     /**
      * @method getSSOUser
      */
     public function getSSOUser(){
+        
         if(isset($_SESSION['MGSSO_USER'])){
 
             $this->verifyAuth($_SESSION['MGSSO_USER']);
@@ -177,9 +200,14 @@ class MGSSOBroker
         return null;
     }
 
-    public function getLocalUser(){
+    public function getLocalUser($SSOUser = null){
 
-        $ssoUser = $this->getSSOUser();
+        $ssoUser = $SSOUser ? $SSOUser : $this->getSSOUser();
+
+        if(!$ssoUser){
+            return null;
+        }
+
         $userModelClass = config('auth.providers.users.model');
         $user = $userModelClass::where('network_id', $ssoUser['id'])->first();
 
@@ -209,28 +237,18 @@ class MGSSOBroker
                 ]);
                 $result = json_decode((string) $response->getBody(), true);
 
-                $this->setAuthResult($result, true);
-
-                $logModel = config('auth.providers.users.logModel');
-                if($logModel) {
-                    $user = $this->getSSOUser();
-                    $logModel::create([
-                        'user_id' => $user->id,
-                        'date_last_login' => date('Y-m-d H:i:s'),
-                        'ip' =>  \Illuminate\Support\Facades\Request::getClientIp(),
-                        'source_id' => MGSSOHelper::isMobile(),
-                        'browser' => MGSSOHelper::getBrowser(),
-                        'system_log_action_id' => 13,
-                    ]);
-    
-                }
+                $this->setAuthResult($result);
+                $this->setNeedLogLogin(true);
+                
                 return true;
             } catch(RequestException $e){
                 $response = $e->getResponse();
                 if($response){
                     $error = json_decode($response->getBody());
+                    return dd($error);
                     return $error;
                 }
+                return dd($e->getMessage());
 
                 return $e->getMessage();
 
@@ -262,6 +280,7 @@ class MGSSOBroker
         unset($_SESSION['MGSSO_ACCESS_TOKEN']);
         unset($_SESSION['MGSSO_REFRESH_TOKEN']);
         unset($_SESSION['MGSSO_TOKEN_EXPIRES_IN']);
+        unset($_SESSION['locale']);
 
         Session::put('origin', MGSSOHelper::isMobile());
         Session::put('nav', MGSSOHelper::getBrowser());
@@ -295,6 +314,7 @@ class MGSSOBroker
      * @method getLocale
      */
     public function getLocale(){
+        if(!isset($_SESSION['locale'])) $this->adjustLanguage();
         return $_SESSION['locale'];
     }
 
