@@ -50,7 +50,7 @@ class MGSSOBroker
     }
 
     protected function adjustLanguage(){
-
+        
         if(!isset($_SESSION['locale'])){
             $arr_ip = geoip()->getLocation($_SERVER['REMOTE_ADDR']);
             $country  = $this->countryModel::where('code2', $arr_ip['iso_code'])->first();
