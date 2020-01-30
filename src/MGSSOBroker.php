@@ -262,12 +262,14 @@ class MGSSOBroker
     /**
      * @method logout
      */
-    public function logout($ignoreRequest = false)
+    public function logout($ignoreRequest = false, $clearAllSessions = false)
     {
         if(!$ignoreRequest){
             try {
+                $params = $this->formParams();
+                $params['clearAll'] = $clearAllSessions;
                 $this->http->post('api/sso/logout', [
-                    'form_params' => $this->formParams(),
+                    'form_params' => $params,
                 ]);
             } catch(RequestException $e){
             }
