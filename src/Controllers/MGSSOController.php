@@ -29,17 +29,17 @@ class MGSSOController extends BaseController
 
         $loginResult = $mgBroker->login($request->get('email'),$request->get('password'));
         if($loginResult === true){
-            
+
             if ($this->hasTooManyLoginAttempts($request)) {
                 $this->fireLockoutEvent($request);
 
                 return $this->sendLockoutResponse($request);
             }
 
-            return redirect('/');
-            
+            return redirect('/dashboard');
+
         }
-        
+
         if($validator->fails()){
             foreach($validator->errors()->messages() as $key => $errors){
                 $_SESSION['inputErrors'][$key] = $errors;
@@ -81,16 +81,16 @@ class MGSSOController extends BaseController
                 $user->verified = 0;
                 $mgBroker->sendToken($user->email);
                 $user->save();
-                return redirect()->back()->with('status', 
+                return redirect()->back()->with('status',
                     Lang::has('rescue_token.email_sent') ? Lang::get('rescue_token.email_sent') : 'Email successfully sent');
             } catch (\Exception $ex){
-                return redirect()->back()->with('status', 
+                return redirect()->back()->with('status',
                     Lang::has('rescue_token.error_sent') ? Lang::get('rescue_token.error_sent') : 'Ops! error send email'
                 );
             }
 
         } else{
-            return redirect()->back()->with('status', 
+            return redirect()->back()->with('status',
                 Lang::has('rescue_token.email_not_exists') ? Lang::get('rescue_token.email_not_exists') : 'Is email NOT already in our database'
             );
         }
